@@ -20,6 +20,9 @@ CANVAS_SIZE = SKIN_SIZE * PIXEL_SIZE + MARGIN * 2
 WHEEL_SIZE = 140
 RING_WIDTH = 10
 
+RGB_BAR_WIDTH = 256
+RGB_BAR_HEIGHT = 12
+
 TRANSPARENT = (0, 0, 0, 0)
 current_color = (255, 0, 0, 255)  # 赤
 
@@ -28,7 +31,7 @@ edit_second_layer_only = False
 last_drawn = None
 tool_mode = "draw"  # "draw" or "eyedropper"
 
-USER_PALETTE_SIZE = 12
+USER_PALETTE_SIZE = 36
 user_palette = [None] * USER_PALETTE_SIZE
 user_palette_buttons = []
 
@@ -569,18 +572,18 @@ def pick_color(event):
 
 
 def update_palette_selection(selected_rgb):
-    for rgb, btn in palette_buttons.items():
+    for rgb, canvas in palette_buttons.items():
         if rgb == selected_rgb:
-            btn.configure(relief="solid", bd=0, highlightbackground="darkblue")
+            canvas.itemconfig("selection", state="normal", outline="#000000")
         else:
-            btn.configure(relief="flat", bd=1, highlightbackground="#888888")
+            canvas.itemconfig("selection", state="hidden", outline="#888888")
 
     # ユーザーパレット
-    for i, btn in enumerate(user_palette_buttons):
-        if user_palette[i] == current_color:
-            btn.configure(relief="solid", bd=0, highlightbackground="darkblue")
+    for i, canvas in enumerate(user_palette_buttons):
+        if user_palette[i] == selected_rgb:
+            canvas.itemconfig("selection", state="normal", outline="#000000")
         else:
-            btn.configure(relief="flat", bd=1, highlightbackground="#888888")
+            canvas.itemconfig("selection", state="hidden", outline="#888888")
 
 
 def set_palette_color(rgb):
@@ -588,6 +591,9 @@ def set_palette_color(rgb):
     r, g, b = rgb
     set_color((r, g, b, 255))
     update_palette_selection(rgb)
+    r_scale.set(r)
+    g_scale.set(g)
+    b_scale.set(b)
 
 
 def set_color(color):
@@ -602,25 +608,129 @@ def set_tool(mode):
 
 
 # =====================
+# カラーパレット
+# =====================
+PALETTE_CELL_SIZE = 24
+
+
+def create_palette_cell(parent, rgb):
+    size = PALETTE_CELL_SIZE
+    hex_color = "#%02x%02x%02x" % rgb
+
+    canvas = tk.Canvas(parent, width=size, height=size, highlightthickness=0, bd=0)
+
+    # 色本体
+    canvas.create_rectangle(
+        2, 2, size - 2, size - 2, fill=hex_color, outline="#808080", tags="color"
+    )
+
+    # 選択枠（最初は非表示）
+    canvas.create_rectangle(
+        1,
+        1,
+        size - 1,
+        size - 1,
+        outline="white",
+        width=1,
+        tags="selection",
+        state="hidden",
+    )
+
+    canvas.bind("<Button-1>", lambda e: set_palette_color(rgb))
+
+    return canvas
+
+
+# =====================
 # ユーザーパレット
 # =====================
+def create_user_palette_cell(parent):
+    size = PALETTE_CELL_SIZE
+    rgb = user_palette[i] if i < len(user_palette) else None
+
+    canvas = tk.Canvas(
+        parent,
+        width=size,
+        height=size,
+        highlightthickness=0,
+        bd=0,
+    )
+
+    # 背景色（未登録ならグレー）
+    if rgb:
+        hex_color = "#%02x%02x%02x" % rgb
+    else:
+        hex_color = "#cccccc"
+
+    canvas.create_rectangle(
+        2,
+        2,
+        size - 2,
+        size - 2,
+        fill=hex_color,
+        outline="#808080",
+        tags="color",
+    )
+
+    # 選択枠（非表示）
+    canvas.create_rectangle(
+        1,
+        1,
+        size - 1,
+        size - 1,
+        outline="white",
+        width=1,
+        tags="selection",
+        state="hidden",
+    )
+
+    # 左クリック：選択
+    canvas.bind("<Button-1>", lambda e, idx=i: select_user_palette_color(idx))
+
+    # 右クリック：登録
+    canvas.bind("<Button-3>", lambda e, idx=i: register_color_to_slot(idx))
+
+    return canvas
+
+
 def select_user_palette_color(index):
     color = user_palette[index]
     if color is None:
         return
 
     set_palette_color(color)
-    update_palette_selection(rgb)
+    update_palette_selection(color)
+
+
+# def select_user_palette_color(index):
+#    color = user_palette[index]
+#    if color is None:
+#        return
+#
+#    set_palette_color(color)
+#    update_palette_selection(rgb)
 
 
 def update_user_palette_button(index):
-    palette_btn = user_palette_buttons[index]
+    cell = user_palette_buttons[index]
     color = user_palette[index]
 
     if color is None:
-        palette_btn.configure(bg="#cccccc")
+        hex_color = "#cccccc"
     else:
-        palette_btn.configure(bg=f"#{color[0]:02x}{color[1]:02x}{color[2]:02x}")
+        hex_color = f"#{color[0]:02x}{color[1]:02x}{color[2]:02x}"
+
+    cell.itemconfig("color", fill=hex_color)
+
+
+# def update_user_palette_button(index):
+#    palette_btn = user_palette_buttons[index]
+#    color = user_palette[index]
+#
+#    if color is None:
+#        palette_btn.configure(bg="#cccccc")
+#    else:
+#        palette_btn.configure(bg=f"#{color[0]:02x}{color[1]:02x}{color[2]:02x}")
 
 
 def register_current_color():
@@ -661,16 +771,17 @@ def init_color_wheel():
 def draw_hue_ring():
     global wheel_photo
 
-    cx = cy = WHEEL_SIZE // 2
-    radius = WHEEL_SIZE // 2
-    inner_radius = radius - RING_WIDTH
-    size = WHEEL_SIZE
+    scale = 2
+    size = WHEEL_SIZE * scale
+    cx = cy = size // 2
+    radius = size // 2
+    inner_radius = radius - (RING_WIDTH * scale)
 
     img = Image.new("RGBA", (size, size), (0, 0, 0, 0))
     pixels = img.load()
 
-    for y in range(WHEEL_SIZE):
-        for x in range(WHEEL_SIZE):
+    for y in range(size):
+        for x in range(size):
             dx = x - cx
             dy = y - cy
             distance = math.sqrt(dx * dx + dy * dy)
@@ -686,6 +797,7 @@ def draw_hue_ring():
                     int(b * 255),
                     255,
                 )
+    img = img.resize((WHEEL_SIZE, WHEEL_SIZE), Image.Resampling.LANCZOS)
     wheel_photo = ImageTk.PhotoImage(img)
     wheel_canvas.delete("all")
     wheel_canvas.create_image(0, 0, anchor="nw", image=wheel_photo)
@@ -835,6 +947,144 @@ def pick_color_from_sv(event):
 
 
 # =====================
+# RGBバー
+# =====================
+def update_from_rgb():
+    global current_hue, current_s, current_v
+
+    r = r_scale.get() / 255
+    g = g_scale.get() / 255
+    b = b_scale.get() / 255
+
+    h, s, v = colorsys.rgb_to_hsv(r, g, b)
+
+    current_hue = h
+    current_s = s
+    current_v = v
+
+    redraw_sv_square()
+    redraw_cursors()
+
+
+def create_rgb_row(channel):
+    row_frame = tk.Frame(rgb_frame)
+
+    # 左ラベル
+    label = tk.Label(row_frame, text=channel.upper(), width=2)
+    label.pack(side="left")
+
+    # バー
+    bar = create_rgb_bar(row_frame, channel)
+    bar.pack(side="left", fill="x", expand=True)
+
+    # 右数値ラベル
+    value_label = tk.Label(row_frame, text="0", width=4, anchor="e")
+    value_label.pack(side="right")
+
+    row_frame.pack(fill="x", pady=4)
+
+    return bar, value_label
+
+
+def create_rgb_bar(parent, channel):
+    canvas = tk.Canvas(
+        parent,
+        width=RGB_BAR_WIDTH,
+        height=RGB_BAR_HEIGHT,
+        highlightthickness=0,
+        bd=0,
+    )
+
+    # --- グラデーション生成 ---
+    img = Image.new("RGB", (RGB_BAR_WIDTH, RGB_BAR_HEIGHT))
+    pixels = img.load()
+
+    for x in range(RGB_BAR_WIDTH):
+        value = x
+        for y in range(RGB_BAR_HEIGHT):
+            if channel == "r":
+                pixels[x, y] = (value, 0, 0)
+            elif channel == "g":
+                pixels[x, y] = (0, value, 0)
+            elif channel == "b":
+                pixels[x, y] = (0, 0, value)
+
+    photo = ImageTk.PhotoImage(img)
+
+    canvas.create_image(0, 0, anchor="nw", image=photo)
+    canvas.image = photo  # 参照保持重要
+
+    canvas.channel = channel
+
+    canvas.bind("<Button-1>", on_rgb_bar_click)
+    canvas.bind("<B1-Motion>", on_rgb_bar_click)
+
+    return canvas
+
+
+def get_current_rgb():
+    r, g, b = colorsys.hsv_to_rgb(current_hue, current_s, current_v)
+    return int(r * 255), int(g * 255), int(b * 255)
+
+
+def on_rgb_bar_click(event):
+    global current_hue, current_s, current_v
+
+    canvas = event.widget
+    channel = canvas.channel
+
+    value = max(0, min(255, event.x))
+
+    # 現在色取得
+    r, g, b = get_current_rgb()
+
+    if channel == "r":
+        r = value
+    elif channel == "g":
+        g = value
+    elif channel == "b":
+        b = value
+
+    # HSVへ変換
+    h, s, v = colorsys.rgb_to_hsv(r / 255, g / 255, b / 255)
+
+    current_hue = h
+    current_s = s
+    current_v = v
+
+    update_all_from_hsv()
+
+
+def update_all_from_hsv():
+    r, g, b = colorsys.hsv_to_rgb(current_hue, current_s, current_v)
+    r, g, b = int(r * 255), int(g * 255), int(b * 255)
+
+    set_palette_color((r, g, b))
+
+    redraw_sv_square()
+    redraw_cursors()
+    redraw_rgb_cursors(r, g, b)
+
+
+def draw_rgb_cursor(canvas, value):
+    canvas.delete("cursor")
+
+    x = value
+
+    canvas.create_line(x, 0, x, RGB_BAR_HEIGHT, fill="white", width=2, tags="cursor")
+
+
+def redraw_rgb_cursors(r, g, b):
+    draw_rgb_cursor(r_bar, r)
+    draw_rgb_cursor(g_bar, g)
+    draw_rgb_cursor(b_bar, b)
+
+    r_value_label.config(text=str(r))
+    g_value_label.config(text=str(g))
+    b_value_label.config(text=str(b))
+
+
+# =====================
 # 第二レイヤー
 # =====================
 def toggle_edit_second_layer():
@@ -885,7 +1135,7 @@ canvas.bind("<ButtonRelease-1>", reset_last_drawn)
 # =====================
 # 📦 toolbar
 # =====================
-TOOLBAR_WIDTH = 303
+TOOLBAR_WIDTH = 350
 
 toolbar_container = tk.Frame(root, width=TOOLBAR_WIDTH)
 toolbar_container.grid(row=0, column=1, sticky="ns")
@@ -942,6 +1192,35 @@ wheel_canvas = tk.Canvas(color_section, width=WHEEL_SIZE, height=WHEEL_SIZE)
 wheel_canvas.pack()
 wheel_canvas.bind("<Button-1>", pick_color_from_wheel)
 
+# RGBバー
+rgb_frame = tk.Frame(color_section)
+rgb_frame.pack(fill="x", pady=10)
+
+r_scale = tk.Scale(
+    rgb_frame, from_=0, to=255, orient="horizontal", label="R", command=update_from_rgb
+)
+
+g_scale = tk.Scale(
+    rgb_frame, from_=0, to=255, orient="horizontal", label="G", command=update_from_rgb
+)
+
+b_scale = tk.Scale(
+    rgb_frame, from_=0, to=255, orient="horizontal", label="B", command=update_from_rgb
+)
+
+r_bar, r_value_label = create_rgb_row("r")
+g_bar, g_value_label = create_rgb_row("g")
+b_bar, b_value_label = create_rgb_row("b")
+
+r_bar.pack(pady=4)
+g_bar.pack(pady=4)
+b_bar.pack(pady=4)
+
+# 初期カーソル描画
+r, g, b = get_current_rgb()
+redraw_rgb_cursors(r, g, b)
+
+
 # カラーパレット
 tk.Button(color_section, text="カラーパレット", command=choose_color).pack(
     fill=tk.X, pady=5
@@ -952,25 +1231,10 @@ palette_frame = tk.Frame(color_section)
 palette_frame.pack(pady=5)
 
 palette_buttons = {}
-
-for i, rgb in enumerate(PALETTE_COLORS):
-    hex_color = f"#{rgb[0]:02x}{rgb[1]:02x}{rgb[2]:02x}"
-
-    btn = tk.Button(
-        palette_frame,
-        bg=hex_color,
-        activebackground=hex_color,  # ← 灰色にしない
-        width=2,
-        height=1,
-        relief="flat",
-        bd=1,
-        highlightthickness=1,
-        highlightbackground="#888888",
-        command=lambda c=rgb: set_palette_color(c),
-    )
-
-    btn.grid(row=i // 6, column=i % 6, padx=1, pady=1)
-    palette_buttons[rgb] = btn
+for rgb in PALETTE_COLORS:
+    cell = create_palette_cell(palette_frame, rgb)
+    cell.pack(side="left", padx=1, pady=1)
+    palette_buttons[rgb] = cell
 
 
 # =========================
@@ -982,19 +1246,10 @@ user_palette_frame = tk.Frame(color_section)
 user_palette_frame.pack(pady=5)
 
 for i in range(USER_PALETTE_SIZE):
-    btn = tk.Button(
-        user_palette_frame,
-        width=2,
-        height=1,
-        bd=0,
-        relief="flat",
-        bg="#cccccc",
-        command=lambda idx=i: select_user_palette_color(idx),
-    )
-    btn.grid(row=i // 6, column=i % 6, padx=2, pady=2)
-    # ★ 右クリックで登録
-    btn.bind("<Button-3>", lambda e, idx=i: register_color_to_slot(idx))
-    user_palette_buttons.append(btn)
+    cell = create_user_palette_cell(user_palette_frame)
+    cell.grid(row=i // 12, column=i % 12, padx=1, pady=1)
+
+    user_palette_buttons.append(cell)
 
 # 横並び用フレーム
 current_color_row = tk.Frame(color_section)
