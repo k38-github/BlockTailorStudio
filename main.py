@@ -8,6 +8,7 @@ from tkinter import colorchooser
 from tkinter import messagebox
 
 from PIL import Image, ImageTk
+from PIL import ImageDraw
 from typing import Optional
 
 # =====================
@@ -18,7 +19,7 @@ PIXEL_SIZE = 10
 MARGIN = 20
 CANVAS_SIZE = SKIN_SIZE * PIXEL_SIZE + MARGIN * 2
 WHEEL_SIZE = 140
-RING_WIDTH = 10
+RING_WIDTH = 12
 
 RGB_BAR_WIDTH = 256
 RGB_BAR_HEIGHT = 12
@@ -41,6 +42,12 @@ current_v = 1.0
 
 wheel_photo = None
 sv_photo = None
+
+sv_cursor_photo = None
+sv_cursor_id = None
+cursor_photo = None
+cursor_id = None
+
 
 # =====================
 # データ
@@ -702,15 +709,6 @@ def select_user_palette_color(index):
     update_palette_selection(color)
 
 
-# def select_user_palette_color(index):
-#    color = user_palette[index]
-#    if color is None:
-#        return
-#
-#    set_palette_color(color)
-#    update_palette_selection(rgb)
-
-
 def update_user_palette_button(index):
     cell = user_palette_buttons[index]
     color = user_palette[index]
@@ -721,16 +719,6 @@ def update_user_palette_button(index):
         hex_color = f"#{color[0]:02x}{color[1]:02x}{color[2]:02x}"
 
     cell.itemconfig("color", fill=hex_color)
-
-
-# def update_user_palette_button(index):
-#    palette_btn = user_palette_buttons[index]
-#    color = user_palette[index]
-#
-#    if color is None:
-#        palette_btn.configure(bg="#cccccc")
-#    else:
-#        palette_btn.configure(bg=f"#{color[0]:02x}{color[1]:02x}{color[2]:02x}")
 
 
 def register_current_color():
@@ -762,19 +750,32 @@ def register_color_to_slot(idx):
 # カラーサークル
 # =====================
 def init_color_wheel():
+    global cursor_photo
+    global cursor_id
+    global sv_cursor_photo
+    global sv_cursor_id
+
     draw_hue_ring()
+    cursor_photo = create_cursor_image()
+    cursor_id = wheel_canvas.create_image(
+        WHEEL_SIZE // 2, WHEEL_SIZE // 2, image=cursor_photo, anchor="center"
+    )
+    redraw_hue_cursor()
+    sv_cursor_photo = create_cursor_image()
+    sv_cursor_id = wheel_canvas.create_image(
+        0, 0, image=sv_cursor_photo, anchor="center"
+    )
     draw_sv_square()
-    draw_wheel_cursor()
-    draw_sv_cursor()
+    redraw_sv_cursor()
 
 
 def draw_hue_ring():
     global wheel_photo
 
-    scale = 2
+    scale = 3
     size = WHEEL_SIZE * scale
     cx = cy = size // 2
-    radius = size // 2
+    radius = size // 2 - (scale * 2)
     inner_radius = radius - (RING_WIDTH * scale)
 
     img = Image.new("RGBA", (size, size), (0, 0, 0, 0))
@@ -786,7 +787,7 @@ def draw_hue_ring():
             dy = y - cy
             distance = math.sqrt(dx * dx + dy * dy)
 
-            if inner_radius <= distance <= radius:
+            if inner_radius - 1 <= distance <= radius + 1:
                 angle = math.atan2(dy, dx)
                 hue = (angle + math.pi) / (2 * math.pi)
 
@@ -797,23 +798,58 @@ def draw_hue_ring():
                     int(b * 255),
                     255,
                 )
-    img = img.resize((WHEEL_SIZE, WHEEL_SIZE), Image.Resampling.LANCZOS)
+
+    draw = ImageDraw.Draw(img)
+    out_border_width = scale
+
+    # 外枠
+    draw.ellipse(
+        (
+            out_border_width // 2,
+            out_border_width // 2,
+            size - out_border_width // 2 - 1,
+            size - out_border_width // 2 - 1,
+        ),
+        outline=(70, 130, 182, 180),
+        width=out_border_width,
+    )
+
+    inner_border_width = scale
+
+    # --- 内枠 ---
+    inner_left = cx - inner_radius
+    inner_top = cy - inner_radius
+    inner_right = cx + inner_radius
+    inner_bottom = cy + inner_radius
+
+    draw.ellipse(
+        (
+            inner_left,
+            inner_top,
+            inner_right - 1,
+            inner_bottom - 1,
+        ),
+        outline=(70, 130, 182, 180),
+        width=inner_border_width,
+    )
+
+    img = img.resize((WHEEL_SIZE - 1, WHEEL_SIZE - 1), Image.Resampling.LANCZOS)
+
     wheel_photo = ImageTk.PhotoImage(img)
     wheel_canvas.delete("all")
-    wheel_canvas.create_image(0, 0, anchor="nw", image=wheel_photo)
+    wheel_canvas.create_image(
+        WHEEL_SIZE / 2, WHEEL_SIZE / 2, anchor="center", image=wheel_photo
+    )
 
 
 def draw_sv_square():
     global sv_photo
 
-    cx = WHEEL_SIZE / 2
-    cy = WHEEL_SIZE / 2
+    cx = WHEEL_SIZE / 2 + 1
+    cy = WHEEL_SIZE / 2 + 1
     radius = WHEEL_SIZE // 2
 
     sv_size = int((radius - RING_WIDTH - 20) * 2)
-
-    start_x = int(cx - sv_size / 2)
-    start_y = int(cy - sv_size / 2)
 
     img = Image.new("RGBA", (sv_size, sv_size))
     pixels = img.load()
@@ -832,40 +868,98 @@ def draw_sv_square():
                 255,
             )
 
-    sv_photo = ImageTk.PhotoImage(img)
+    # 枠を描く
+    draw = ImageDraw.Draw(img)
 
-    wheel_canvas.delete("sv_image")
-    wheel_canvas.create_image(
-        start_x, start_y, anchor="nw", image=sv_photo, tags="sv_image"
+    # ① 半透明外枠（少し太め）
+    draw.rectangle(
+        (0, 0, sv_size - 1, sv_size - 1), outline=(70, 30, 132, 140), width=1  # RGBA
     )
 
-    draw_sv_cursor()
+    # ② 内側1px白枠
+    draw.rectangle(
+        (1, 1, sv_size - 2, sv_size - 2), outline=(255, 255, 255, 255), width=1
+    )
+
+    sv_photo = ImageTk.PhotoImage(img)
+    wheel_canvas.delete("sv_image")
+    wheel_canvas.create_image(cx, cy, anchor="center", image=sv_photo, tags="sv_image")
+
+    redraw_sv_cursor()
+    wheel_canvas.tag_raise(sv_cursor_id)
 
 
-def draw_wheel_cursor():
+def create_cursor_image(diameter=14, scale=3):
+    size = diameter * scale
+    img = Image.new("RGBA", (size, size), (0, 0, 0, 0))
+    draw = ImageDraw.Draw(img)
+
+    outer_width = 3 * scale
+    inner_width = 1 * scale
+
+    # 外黒リング
+    draw.ellipse(
+        (
+            outer_width // 2,
+            outer_width // 2,
+            size - outer_width // 2 - 1,
+            size - outer_width // 2 - 1,
+        ),
+        outline=(70, 130, 182, 180),
+        width=outer_width,
+    )
+
+    # 内白リング
+    draw.ellipse(
+        (
+            outer_width,
+            outer_width,
+            size - outer_width - 1,
+            size - outer_width - 1,
+        ),
+        outline=(255, 255, 255, 255),
+        width=inner_width,
+    )
+
+    img = img.resize((diameter, diameter), Image.Resampling.LANCZOS)
+
+    return ImageTk.PhotoImage(img)
+
+
+def redraw_hue_cursor():
+    global cursor_id
+
     cx = WHEEL_SIZE / 2
     cy = WHEEL_SIZE / 2
-    radius = WHEEL_SIZE // 2
-    mid_radius = radius - RING_WIDTH / 2
+    radius = WHEEL_SIZE / 2
+    inner_radius = radius - RING_WIDTH - 2
+
+    # リング中央半径
+    cursor_radius = inner_radius + (RING_WIDTH / 2)
 
     angle = current_hue * 2 * math.pi - math.pi
 
-    x = cx + math.cos(angle) * mid_radius
-    y = cy + math.sin(angle) * mid_radius
+    x = cx + cursor_radius * math.cos(angle)
+    y = cy + cursor_radius * math.sin(angle)
 
-    wheel_canvas.create_oval(
-        x - 5, y - 5, x + 5, y + 5, outline="black", width=2, tags="cursor"
-    )
-
-    wheel_canvas.create_oval(
-        x - 4, y - 4, x + 4, y + 4, outline="white", width=2, tags="cursor"
-    )
+    # 画像カーソルは中心座標だけ
+    wheel_canvas.coords(cursor_id, x, y)
 
 
-def draw_sv_cursor():
+def redraw_sv_square():
+    wheel_canvas.delete("sv")
+    wheel_canvas.delete("sv_image")
+    draw_sv_square()
+    wheel_canvas.tag_raise(sv_cursor_id)
+
+
+def redraw_sv_cursor():
+    global sv_cursor_id
+
     cx = WHEEL_SIZE / 2
     cy = WHEEL_SIZE / 2
     radius = WHEEL_SIZE // 2
+
     sv_size = int((radius - RING_WIDTH - 20) * 2)
 
     start_x = cx - sv_size / 2
@@ -874,32 +968,17 @@ def draw_sv_cursor():
     x = start_x + current_s * sv_size
     y = start_y + (1 - current_v) * sv_size
 
-    wheel_canvas.create_oval(
-        x - 5, y - 5, x + 5, y + 5, outline="black", width=2, tags="sv"
-    )
-
-    wheel_canvas.create_oval(
-        x - 4, y - 4, x + 4, y + 4, outline="white", width=2, tags="sv"
-    )
-
-
-def redraw_sv_square():
-    wheel_canvas.delete("sv")
-    wheel_canvas.delete("sv_image")
-    draw_sv_square()
-
-
-def redraw_cursors():
-    wheel_canvas.delete("cursor")
-    draw_wheel_cursor()
+    # 画像カーソルは中心座標のみ
+    wheel_canvas.coords(sv_cursor_id, x, y)
 
 
 def pick_color_from_wheel(event):
     global current_hue
+    global cursor_id
 
     cx = WHEEL_SIZE / 2
     cy = WHEEL_SIZE / 2
-    radius = WHEEL_SIZE // 2
+    radius = WHEEL_SIZE // 2 - 2
 
     dx = event.x - cx
     dy = event.y - cy
@@ -911,8 +990,17 @@ def pick_color_from_wheel(event):
     if inner_radius <= distance <= radius:
         angle = math.atan2(dy, dx)
         current_hue = (angle + math.pi) / (2 * math.pi)
+
+        # リング外に出ないよう制限
+        if distance > radius:
+            scale_factor = radius / distance
+            dx *= scale_factor
+            dy *= scale_factor
+
+        wheel_canvas.coords(cursor_id, cx + dx, cy + dy)
+
         redraw_sv_square()
-        redraw_cursors()
+        redraw_hue_cursor()
 
     # 正方形内なら色取得
     else:
@@ -963,7 +1051,7 @@ def update_from_rgb():
     current_v = v
 
     redraw_sv_square()
-    redraw_cursors()
+    redraw_hue_cursor()
 
 
 def create_rgb_row(channel):
@@ -1062,7 +1150,7 @@ def update_all_from_hsv():
     set_palette_color((r, g, b))
 
     redraw_sv_square()
-    redraw_cursors()
+    redraw_hue_cursor()
     redraw_rgb_cursors(r, g, b)
 
 
@@ -1191,6 +1279,7 @@ color_section.pack(fill=tk.X, pady=5)
 wheel_canvas = tk.Canvas(color_section, width=WHEEL_SIZE, height=WHEEL_SIZE)
 wheel_canvas.pack()
 wheel_canvas.bind("<Button-1>", pick_color_from_wheel)
+wheel_canvas.bind("<B1-Motion>", pick_color_from_wheel)
 
 # RGBバー
 rgb_frame = tk.Frame(color_section)
