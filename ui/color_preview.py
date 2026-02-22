@@ -42,10 +42,10 @@ class ColorPreview(tk.Frame):
 
         if a == 0:
             img = self.create_transparent_preview()
-            self.color_code_label.configure(text="透明")
+            self.color_code_label.configure(text="#######")
         else:
             img = self.create_color_preview((r, g, b))
-            self.color_code_label.configure(text=f"#{r:02X}{g:02X}{b:02X}")
+            self.color_code_label.configure(text=hex_color)
 
         self.preview_image = ImageTk.PhotoImage(img)
         self.canvas.itemconfig(self.image_id, image=self.preview_image)
@@ -100,32 +100,10 @@ class ColorPreview(tk.Frame):
         draw.rounded_rectangle(
             (margin, margin, size - margin - 1, size - margin - 1),
             radius=radius - margin,
-            outline=(120, 120, 120, 255),
+            outline=(70, 130, 182, 180),
             width=self.SCALE,
         )
 
         img = img.resize((self.SIZE, self.SIZE), Image.Resampling.LANCZOS)
 
         return img
-
-    def update_color_preview(self):
-        self.canvas.delete("all")
-
-        r, g, b, a = self.controller.get_color()
-
-        if a == 0:
-            # 透明用チェッカーボード
-            size = 10
-            for y in range(0, 40, size):
-                for x in range(0, 40, size):
-                    c = "#cccccc" if (x // size + y // size) % 2 == 0 else "#eeeeee"
-                    self.canvas.create_rectangle(
-                        x, y, x + size, y + size, fill=c, outline=""
-                    )
-            self.canvas.create_text(20, 20, text="透明", fill="#666", font=("Arial", 8))
-            self.color_code_label.configure(text="透明")
-        else:
-            self.canvas.create_rectangle(
-                0, 0, 40, 40, fill=f"#{r:02x}{g:02x}{b:02x}", outline=""
-            )
-            self.color_code_label.configure(text=f"#{r:02X}{g:02X}{b:02X}")

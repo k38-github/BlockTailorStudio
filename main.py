@@ -1,20 +1,14 @@
-import json
-import colorsys
-import math
-
 import tkinter as tk
 from tkinter import filedialog
 from tkinter import colorchooser
-from tkinter import messagebox
 
-from PIL import Image, ImageTk
-from PIL import ImageDraw
+from PIL import Image
 from typing import Optional
 
 from ui.color_controller import ColorController
 from ui.color_picker import ColorPicker
-from ui.color_preview import ColorPreview
 from ui.rgb_bars import RGBBars
+from ui.user_palette import UserPalette
 
 
 class BlockTailorApp:
@@ -215,24 +209,6 @@ class BlockTailorApp:
             "左脚(ズボン)_後": (12, 52, 16, 64),
         }
 
-        # =====================
-        # パレット定義
-        # =====================
-        self.PALETTE_COLORS = [
-            (0, 0, 0),
-            (255, 255, 255),
-            (128, 128, 128),
-            (255, 0, 0),
-            (0, 255, 0),
-            (0, 0, 255),
-            (255, 255, 0),
-            (0, 255, 255),
-            (255, 0, 255),
-            (255, 128, 0),
-            (128, 0, 255),
-            (0, 128, 255),
-        ]
-
         self.setup_ui()
 
     def setup_ui(self):
@@ -285,19 +261,13 @@ class BlockTailorApp:
 
         toolbar.bind("<Configure>", self.update_scrollregion)
 
-        self.scroll_canvas.bind_all("<MouseWheel>", self._on_mousewheel)
-        self.scroll_canvas.bind_all(
-            "<Button-4>", lambda e: self.scroll_canvas.yview_scroll(-1, "units")
-        )
-        self.scroll_canvas.bind_all(
-            "<Button-5>", lambda e: self.scroll_canvas.yview_scroll(1, "units")
-        )
+        self._enable_parent_scroll()
 
         # =========================
         # 🎨 カラーセクション
         # =========================
         color_section = tk.LabelFrame(toolbar, text="🎨 カラー", padx=5, pady=5)
-        color_section.pack(fill=tk.X, pady=5)
+        color_section.pack(fill="x", pady=5)
 
         # カラーサークル
         self.controller = ColorController()
@@ -315,89 +285,72 @@ class BlockTailorApp:
 
         # カラーパレット
         tk.Button(color_section, text="カラーパレット", command=self.choose_color).pack(
-            fill=tk.X, pady=5
+            fill="x", pady=5
         )
-
-        # 既存カラーパレット
-        # palette_frame = tk.Frame(color_section)
-        # palette_frame.pack(pady=5)
-
-        # for rgb in self.PALETTE_COLORS:
-        #    cell = self.create_palette_cell(palette_frame, rgb)
-        #    cell.pack(side="left", padx=1, pady=1)
-        #    self.palette_buttons[rgb] = cell
 
         # =========================
         # 👤 ユーザーパレット
         # =========================
-        tk.Label(color_section, text="ユーザーパレット").pack(pady=(10, 2))
+        self.user_palette = UserPalette(
+            color_section,
+            controller=self.controller,
+            slot_size=256,
+            cell_size=self.PALETTE_CELL_SIZE,
+        )
 
-        user_palette_frame = tk.Frame(color_section)
-        user_palette_frame.pack(pady=5)
-
-        for i in range(self.USER_PALETTE_SIZE):
-            cell = self.create_user_palette_cell(user_palette_frame, i)
-            cell.grid(row=i // 12, column=i % 12, padx=1, pady=1)
-
-            self.user_palette_buttons.append(cell)
-
-        # 横並び用フレーム
-        current_color_row = tk.Frame(color_section)
-        current_color_row.pack(fill="x", pady=5)
-
-        # 3列構成にする
-        current_color_row.columnconfigure(0, weight=1)
-        current_color_row.columnconfigure(1, weight=0)
-        current_color_row.columnconfigure(2, weight=0)
-        current_color_row.columnconfigure(3, weight=1)
-
-        # ===== 登録ボタン =====
-        # tk.Button(
-        #    current_color_row, text="登録", command=self.register_current_color
-        # ).grid(row=0, column=2, padx=(15, 0))
-
-        # パレット保存/読込
+        # ===== パレット用ボタン =====
         palette_io_frame = tk.Frame(color_section)
-        palette_io_frame.pack(fill=tk.X, pady=2)
+        palette_io_frame.pack(fill="x", pady=2)
 
+        # ===== パレット登録/削除 =====
         tk.Button(
-            palette_io_frame, text="パレット保存", command=self.save_user_palette
-        ).pack(side=tk.LEFT, expand=True, fill=tk.X, padx=2)
+            palette_io_frame,
+            text="登録",
+            command=self.user_palette.register_current_color,
+        ).pack(side="left", expand=True, fill="x", padx=2)
         tk.Button(
-            palette_io_frame, text="パレット読込", command=self.load_user_palette
-        ).pack(side=tk.RIGHT, expand=True, fill=tk.X, padx=2)
+            palette_io_frame, text="削除", command=self.user_palette.clear_selected
+        ).pack(side="left", expand=True, fill="x", padx=2)
+
+        # ===== パレット保存/読込 =====
+        tk.Button(
+            palette_io_frame, text="パレット保存", command=self.user_palette.save
+        ).pack(side="left", expand=True, fill="x", padx=2)
+        tk.Button(
+            palette_io_frame, text="パレット読込", command=self.user_palette.load
+        ).pack(side="left", expand=True, fill="x", padx=2)
 
         # =========================
         # 🖌 ツールセクション
         # =========================
         tool_section = tk.LabelFrame(toolbar, text="🖌 ツール", padx=5, pady=5)
-        tool_section.pack(fill=tk.X, pady=5)
+        tool_section.pack(fill="x", pady=5)
 
         tool_row = tk.Frame(tool_section)
-        tool_row.pack(fill=tk.X)
+        tool_row.pack(fill="x")
 
         # ペン
         tk.Button(tool_row, text="ペン", command=lambda: self.set_tool("draw")).pack(
-            fill=tk.X
+            fill="x"
         )
 
         # スポイト
         tk.Button(
             tool_row, text="スポイト", command=lambda: self.set_tool("eyedropper")
-        ).pack(fill=tk.X)
+        ).pack(fill="x")
 
         # 消しゴム
         tk.Button(
             tool_row,
             text="消しゴム",
             command=lambda: self.controller.set_color(self.TRANSPARENT),
-        ).pack(fill=tk.X)
+        ).pack(fill="x")
 
         # =========================
         # ⚙ レイヤーセクション
         # =========================
         layer_section = tk.LabelFrame(toolbar, text="⚙ レイヤー", padx=5, pady=5)
-        layer_section.pack(fill=tk.X, pady=5)
+        layer_section.pack(fill="x", pady=5)
         # 第二レイヤー編集
         self.edit_second_layer_var = tk.BooleanVar(value=False)
         tk.Checkbutton(
@@ -411,16 +364,16 @@ class BlockTailorApp:
         # 💾 ファイルセクション
         # =========================
         file_section = tk.LabelFrame(toolbar, text="💾 ファイル", padx=5, pady=5)
-        file_section.pack(fill=tk.X, pady=5)
+        file_section.pack(fill="x", pady=5)
 
         # 保存
         tk.Button(file_section, text="保存", command=self.save_skin).pack(
-            fill=tk.X, pady=2
+            fill="x", pady=2
         )
 
         # 読み込み
         tk.Button(file_section, text="読込", command=self.load_skin).pack(
-            fill=tk.X, pady=2
+            fill="x", pady=2
         )
 
         # パーツ表示
@@ -429,7 +382,7 @@ class BlockTailorApp:
         part_menu = tk.OptionMenu(
             toolbar, part_var, *part_menu_item.keys(), command=self.set_part
         )
-        part_menu.pack(fill=tk.X, pady=10)
+        part_menu.pack(fill="x", pady=10)
 
         self.redraw()
 
@@ -437,8 +390,25 @@ class BlockTailorApp:
     def update_scrollregion(self, event=None):
         self.scroll_canvas.configure(scrollregion=self.scroll_canvas.bbox("all"))
 
-    def _on_mousewheel(self, event):
-        self.scroll_canvas.yview_scroll(int(-1 * (event.delta / 120)), "units")
+    def _enable_parent_scroll(self):
+
+        def _on_mousewheel(event):
+            if hasattr(event, "delta") and event.delta:
+                delta = int(-1 * (event.delta / 120))
+            else:
+                if event.num == 4:
+                    delta = -1
+                elif event.num == 5:
+                    delta = 1
+                else:
+                    delta = 0
+
+            self.scroll_canvas.yview_scroll(delta, "units")
+            return "break"
+
+        self.scroll_canvas.bind_all("<MouseWheel>", _on_mousewheel)
+        self.scroll_canvas.bind_all("<Button-4>", _on_mousewheel)
+        self.scroll_canvas.bind_all("<Button-5>", _on_mousewheel)
 
     # =====================
     # 描画処理
@@ -679,65 +649,6 @@ class BlockTailorApp:
 
         self.redraw()
 
-    def save_user_palette(self):
-        path = filedialog.asksaveasfilename(
-            defaultextension=".json", filetypes=[("Palette File", "*.json")]
-        )
-        if not path:
-            return
-
-        try:
-            with open(path, "w", encoding="utf-8") as f:
-                json.dump(self.user_palette, f)
-
-            messagebox.showinfo("保存完了", "ユーザーパレットを保存しました。")
-        except Exception as e:
-            messagebox.showerror("保存失敗", f"保存中にエラーが発生しました。\n\n{e}")
-
-    def load_user_palette(self):
-        path = filedialog.askopenfilename(
-            title="ユーザーパレットを読み込む",
-            filetypes=[("User Palette", "*.json")],
-        )
-        if not path:
-            return  # キャンセル
-
-        try:
-            with open(path, "r", encoding="utf-8") as f:
-                data = json.load(f)
-
-            if isinstance(data, dict):
-                loaded = data.get("user_palette")
-            elif isinstance(data, list):
-                loaded = data
-            else:
-                messagebox.showerror("読込失敗", "パレット形式が不正です。")
-                return
-
-            if not isinstance(loaded, list):
-                messagebox.showerror("読込失敗", "パレットデータが不正です。")
-                return
-
-            # サイズを合わせる（安全策）
-            self.user_palette = [
-                tuple(c) if c is not None else None
-                for c in loaded[: self.USER_PALETTE_SIZE]
-            ]
-
-            # 足りない分を None で埋める
-            while len(self.user_palette) < self.USER_PALETTE_SIZE:
-                self.user_palette.append(None)
-
-            # ボタン表示更新
-            for i in range(self.USER_PALETTE_SIZE):
-                self.update_user_palette_button(i)
-
-            messagebox.showinfo("読込完了", "ユーザーパレットを読み込みました。")
-        except Exception as e:
-            messagebox.showerror(
-                "読込失敗", f"読み込み中にエラーが発生しました。\n\n{e}"
-            )
-
     # =====================
     # 色関係
     # =====================
@@ -773,147 +684,8 @@ class BlockTailorApp:
         # 何もなければ透明（任意）
         self.controller.set_color(self.TRANSPARENT)
 
-    def update_palette_selection(self, selected_rgb):
-        for rgb, canvas in self.palette_buttons.items():
-            if rgb == selected_rgb:
-                canvas.itemconfig("selection", state="normal", outline="#000000")
-            else:
-                canvas.itemconfig("selection", state="hidden", outline="#888888")
-
-        # ユーザーパレット
-        for i, canvas in enumerate(self.user_palette_buttons):
-            if self.user_palette[i] == selected_rgb:
-                canvas.itemconfig("selection", state="normal", outline="#000000")
-            else:
-                canvas.itemconfig("selection", state="hidden", outline="#888888")
-
-    def set_palette_color(self, rgb):
-        r, g, b = rgb
-        self.controller.set_color((r, g, b, 255))
-        self.update_palette_selection(rgb)
-        self.rgb.set_rgba((r, g, b, 255))
-
     def set_tool(self, mode):
         self.tool_mode = mode
-
-    # =====================
-    # カラーパレット
-    # =====================
-    def create_palette_cell(self, parent, rgb):
-        size = self.PALETTE_CELL_SIZE
-        hex_color = "#%02x%02x%02x" % rgb
-
-        canvas = tk.Canvas(parent, width=size, height=size, highlightthickness=0, bd=0)
-
-        # 色本体
-        canvas.create_rectangle(
-            2, 2, size - 2, size - 2, fill=hex_color, outline="#808080", tags="color"
-        )
-
-        # 選択枠（最初は非表示）
-        canvas.create_rectangle(
-            1,
-            1,
-            size - 1,
-            size - 1,
-            outline="white",
-            width=1,
-            tags="selection",
-            state="hidden",
-        )
-
-        canvas.bind("<Button-1>", lambda e: self.set_palette_color(rgb))
-
-        return canvas
-
-    # =====================
-    # ユーザーパレット
-    # =====================
-    def create_user_palette_cell(self, parent, i):
-        size = self.PALETTE_CELL_SIZE
-        rgb = self.user_palette[i] if i < len(self.user_palette) else None
-
-        canvas = tk.Canvas(
-            parent,
-            width=size,
-            height=size,
-            highlightthickness=0,
-            bd=0,
-        )
-
-        # 背景色（未登録ならグレー）
-        if rgb:
-            hex_color = "#%02x%02x%02x" % rgb
-        else:
-            hex_color = "#cccccc"
-
-        canvas.create_rectangle(
-            2,
-            2,
-            size - 2,
-            size - 2,
-            fill=hex_color,
-            outline="#808080",
-            tags="color",
-        )
-
-        # 選択枠（非表示）
-        canvas.create_rectangle(
-            1,
-            1,
-            size - 1,
-            size - 1,
-            outline="white",
-            width=1,
-            tags="selection",
-            state="hidden",
-        )
-
-        # 左クリック：選択
-        canvas.bind("<Button-1>", lambda e, idx=i: self.select_user_palette_color(idx))
-
-        # 右クリック：登録
-        canvas.bind("<Button-3>", lambda e, idx=i: self.register_color_to_slot(idx))
-
-        return canvas
-
-    def select_user_palette_color(self, index):
-        color = self.user_palette[index]
-        if color is None:
-            return
-
-        self.set_palette_color(color)
-        self.update_palette_selection(color)
-
-    def update_user_palette_button(self, index):
-        cell = self.user_palette_buttons[index]
-        color = self.user_palette[index]
-
-        if color is None:
-            hex_color = "#cccccc"
-        else:
-            hex_color = f"#{color[0]:02x}{color[1]:02x}{color[2]:02x}"
-
-        cell.itemconfig("color", fill=hex_color)
-
-    # def register_current_color(self):
-    #    r, g, b, _ = self.controller.get_color()
-
-    #    for i in range(self.USER_PALETTE_SIZE):
-    #        if self.user_palette[i] is None:
-    #            self.user_palette[i] = (r, g, b)
-    #            self.update_user_palette_button(i)
-    #            return
-
-    #    # 全部埋まってたら先頭を上書き（好みで変えてOK）
-    #    self.user_palette[0] = (r, g, b)
-    #    self.update_user_palette_button(0)
-
-    def register_color_to_slot(self, idx):
-        r, g, b, _ = self.controller.get_color()
-
-        self.user_palette[idx] = (r, g, b)
-        self.update_user_palette_button(idx)
 
     # =====================
     # 第二レイヤー
