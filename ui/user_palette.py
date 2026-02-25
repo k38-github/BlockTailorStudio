@@ -3,16 +3,19 @@ import tkinter as tk
 from tkinter import filedialog, messagebox
 
 
-class UserPalette:
+class UserPalette(tk.Frame):
     def __init__(self, parent, controller, slot_size=256, cell_size=24):
-        self.parent = parent
+        super().__init__(parent)
+
         self.controller = controller
 
+        # ===== 設定 =====
         self.USER_PALETTE_SIZE = slot_size
         self.PALETTE_CELL_SIZE = cell_size
 
         self.SELECTION_COLOR = "#2d6ea3"
 
+        # ===== データ =====
         self.VISIBLE_ROWS = 4
         self.VISIBLE_COLS = 12
         self.VISIBLE_WIDTH = self.PALETTE_CELL_SIZE * self.VISIBLE_COLS
@@ -24,15 +27,22 @@ class UserPalette:
         self.next_overwrite_index = 0
         self.selected_index = None
 
+        # ===== UI構築 =====
+        self._build_ui()
+        self._build()
+        self._enable_palette_scroll()
+
+    def _build_ui(self):
         # コンテナ
-        border = tk.Frame(parent, bg="#7ca7cb")
+        border = tk.Frame(self, bg="#7ca7cb")
         border.pack(pady=5)
         container = tk.Frame(border, bg="white")
         container.pack(padx=1, pady=1)
 
         # Canvas
         self.canvas = tk.Canvas(container, highlightthickness=0)
-        self.canvas.pack(side="left", fill="both", expand=True)
+        # self.canvas.pack(side="left", fill="both", expand=True)
+        self.canvas.pack(side="left")
 
         # Scrollbar
         self.scrollbar = tk.Scrollbar(
@@ -44,11 +54,7 @@ class UserPalette:
 
         # 中身フレーム（セルを置く場所）
         self.frame = tk.Frame(self.canvas)
-        self.window_id = self.canvas.create_window(1, 1, anchor="nw", window=self.frame)
-
-        self._build()
-        # self._bind_mousewheel()
-        self._enable_palette_scroll()
+        self.window_id = self.canvas.create_window(0, 0, anchor="nw", window=self.frame)
 
     def _build(self):
         for i in range(self.USER_PALETTE_SIZE):
@@ -61,7 +67,7 @@ class UserPalette:
         # スクロール範囲は中身全体
         width = self.frame.winfo_width()
         height = self.frame.winfo_height()
-        self.canvas.config(scrollregion=(0, 0, width + 2, height + 2))
+        self.canvas.config(scrollregion=self.canvas.bbox("all"))
 
         # 表示サイズは固定（3〜4行分）
         self.canvas.config(width=self.VISIBLE_WIDTH, height=self.VISIBLE_HEIGHT)
@@ -106,7 +112,7 @@ class UserPalette:
         )
 
         canvas.bind("<Button-1>", lambda e, i=index: self.select(i))
-        canvas.bind("<Button-3>", lambda e, i=index: self.register(i))
+        canvas.bind("<Button-3>", lambda e, i=index: self.register_palette_color(i))
         canvas.bind("<Double-Button-1>", lambda e, i=index: self.clear(i))
 
         return canvas
@@ -137,7 +143,7 @@ class UserPalette:
         r, g, b = color
         self.controller.set_color((r, g, b, 255))
 
-    def register(self, index):
+    def register_palette_color(self, index):
         r, g, b, _ = self.controller.get_color()
         self.palette[index] = (r, g, b)
         self.update_button(index)

@@ -75,6 +75,11 @@ class ColorPicker(tk.Frame):
         self.canvas.bind("<B1-Motion>", self.on_drag)
         self.canvas.bind("<ButtonRelease-1>", self.on_release)
 
+        self.draw_hue_ring()
+        self.draw_hue_cursor()
+        self.draw_sv_square()
+        self.draw_sv_cursor()
+
     def draw_hue_ring(self):
         scale = 3
         size = self.WHEEL_SIZE * scale

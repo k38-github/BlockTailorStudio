@@ -37,8 +37,6 @@ class RGBBars(tk.Frame):
         self.g_bar, self.g_value_label = self.create_rgb_row("g")
         self.b_bar, self.b_value_label = self.create_rgb_row("b")
 
-        self.pack(fill="x", pady=10)
-
     # -----------------------------
     # UI作成
     # -----------------------------
