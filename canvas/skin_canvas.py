@@ -88,17 +88,6 @@ class SkinCanvas:
                     fill="#191970",
                     font=("Arial", 7),
                 )
-        # if current_part == "全体":
-        # elif FIRST_LAYER_AREAS[current_part]:
-        #    x1, y1, x2, y2 = FIRST_LAYER_AREAS[current_part]
-        #    canvas.create_rectangle(
-        #        MARGIN + x1 * PIXEL_SIZE,
-        #        MARGIN + y1 * PIXEL_SIZE,
-        #        MARGIN + x2 * PIXEL_SIZE,
-        #        MARGIN + y2 * PIXEL_SIZE,
-        #        outline="yellow",
-        #        width=3,
-        #    )
 
     def draw_layer_invalid_mask(self):
         for y in range(self.SKIN_SIZE):

@@ -1,4 +1,5 @@
 from typing import Optional
+from PIL import Image
 
 from core.skin_areas import FIRST_LAYER_AREAS, SECOND_LAYER_AREAS
 
@@ -92,3 +93,21 @@ class SkinModel:
             self.overlay_pixels[y][x] = self.TRANSPARENT
 
         return True
+
+    def export_image(self):
+        img = Image.new("RGBA", (self.SKIN_SIZE, self.SKIN_SIZE))
+        for y in range(self.SKIN_SIZE):
+            for x in range(self.SKIN_SIZE):
+                bp = self.base_pixels[y][x]
+                op = self.overlay_pixels[y][x]
+                img.putpixel((x, y), op if op[3] > 0 else bp)
+        return img
+
+    def import_image(self, img):
+        for y in range(self.SKIN_SIZE):
+            for x in range(self.SKIN_SIZE):
+                pixel = img.getpixel((x, y))
+                if self.is_second_layer(x, y):
+                    self.overlay_pixels[y][x] = pixel
+                else:
+                    self.base_pixels[y][x] = pixel
