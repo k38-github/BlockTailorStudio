@@ -1,3 +1,4 @@
+from tools.bucket_tool import BucketTool
 from tools.eraser_tool import EraserTool
 from tools.eyedropper_tool import EyedropperTool
 from tools.pen_tool import PenTool
@@ -10,6 +11,7 @@ class ToolManager:
             "pen": PenTool(),
             "eyedropper": EyedropperTool(),
             "eraser": EraserTool(),
+            "bucket": BucketTool(),
         }
 
     def set_tool(self, name):

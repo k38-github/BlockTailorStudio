@@ -94,6 +94,11 @@ class SkinModel:
 
         return True
 
+    def get_editing_color(self, x, y):
+        if self.edit_second_layer_only:
+            return self.overlay_pixels[y][x]
+        return self.base_pixels[y][x]
+
     def export_image(self):
         img = Image.new("RGBA", (self.SKIN_SIZE, self.SKIN_SIZE))
         for y in range(self.SKIN_SIZE):
