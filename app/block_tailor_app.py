@@ -2,6 +2,7 @@ import tkinter as tk
 from tkinter import filedialog
 
 from canvas.skin_canvas import SkinCanvas
+from controller.skin_controller import SkinController
 from core.skin_file_manager import SkinFileManager
 from core.skin_model import SkinModel
 from tools.tool_manager import ToolManager
@@ -9,6 +10,7 @@ from ui.color_controller import ColorController
 from ui.color_palette import ColorPalette
 from ui.color_picker import ColorPicker
 from ui.file_panel import FilePanel
+from ui.history_panel import HistoryPanel
 from ui.palette_panel import PaletteIOPanel
 from ui.rgb_bars import RGBBars
 from ui.scrollable_frame import ScrollableFrame
@@ -39,7 +41,7 @@ class BlockTailorApp:
         self.toolbar = None
         self.model = None
 
-        self.controller = None
+        self.color_controller = None
         self.color_picker = None
         self.rgb = None
         self.color_preview = None
@@ -47,8 +49,11 @@ class BlockTailorApp:
         self.user_palette = None
         self.palette_panel = None
 
+        self.skin_controller = None
         self.tool_manager = None
         self.tools_panel = None
+
+        self.history_panel = None
 
         self.canvas = None
         self.toolbar_view = None
@@ -83,24 +88,24 @@ class BlockTailorApp:
         color_section.pack(fill="x", pady=5)
 
         # カラーサークル
-        self.controller = ColorController()
+        self.color_controller = ColorController()
         self.color_picker = ColorPicker(
-            color_section, self.WHEEL_SIZE, self.RING_WIDTH, self.controller
+            color_section, self.WHEEL_SIZE, self.RING_WIDTH, self.color_controller
         )
         self.color_picker.pack()
 
         # RGBバー
-        self.rgb = RGBBars(color_section, controller=self.controller)
+        self.rgb = RGBBars(color_section, controller=self.color_controller)
         self.rgb.pack(fill="x", pady=10)
 
         # カラーパレット
-        self.color_palette = ColorPalette(color_section, self.controller)
+        self.color_palette = ColorPalette(color_section, self.color_controller)
         self.color_palette.pack()
 
         # ユーザーパレット
         self.user_palette = UserPalette(
             color_section,
-            self.controller,
+            self.color_controller,
         )
         self.user_palette.pack(fill="both", expand=True)
 
@@ -121,9 +126,17 @@ class BlockTailorApp:
         # スキンキャンバスセクション
         # =========================
         self.model = SkinModel()
+        self.skin_controller = SkinController(self.model, self.color_controller)
         self.canvas = SkinCanvas(
-            self.root, self.model, self.controller, self.tool_manager
+            self.root, self.model, self.skin_controller, self.tool_manager
         )
+        self.skin_controller.set_on_change(self.canvas.redraw_all)
+
+        self.history_panel = HistoryPanel(toolbar, self.skin_controller)
+        self.history_panel.pack(fill="x", pady=5)
+
+        self.root.bind("<Control-z>", lambda e: self.skin_controller.undo())
+        self.root.bind("<Control-y>", lambda e: self.skin_controller.redo())
 
         # =========================
         # ⚙ レイヤーセクション

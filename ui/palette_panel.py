@@ -1,7 +1,7 @@
 import tkinter as tk
 
 
-class PaletteIOPanel(tk.LabelFrame):
+class PaletteIOPanel(tk.Frame):
     def __init__(self, parent, user_palette):
         super().__init__(parent)
         self.user_palette = user_palette

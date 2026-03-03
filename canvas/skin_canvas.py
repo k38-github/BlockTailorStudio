@@ -184,10 +184,15 @@ class SkinCanvas:
         self.controller.set_color(color)
 
     def on_press(self, event):
-        self.tool_manager.handle_press(event, self.model, self)
+        self.tool_manager.handle_press(event, self.controller, self)
 
     def on_drag(self, event):
-        self.tool_manager.handle_drag(event, self.model, self)
+        self.tool_manager.handle_drag(event, self.controller, self)
 
     def on_release(self, event):
-        self.tool_manager.handle_release(event, self.model, self)
+        self.tool_manager.handle_release(event, self.controller, self)
+
+    def redraw_all(self):
+        for y in range(self.model.SKIN_SIZE):
+            for x in range(self.model.SKIN_SIZE):
+                self.draw_pixels(x, y)

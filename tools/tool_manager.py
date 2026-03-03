@@ -17,14 +17,14 @@ class ToolManager:
     def set_tool(self, name):
         self.current_tool = self.tools[name]
 
-    def handle_press(self, event, model, canvas):
+    def handle_press(self, event, controller, canvas):
         if self.current_tool:
-            self.current_tool.on_press(event, model, canvas)
+            self.current_tool.on_press(event, controller, canvas)
 
-    def handle_drag(self, event, model, canvas):
+    def handle_drag(self, event, controller, canvas):
         if self.current_tool:
-            self.current_tool.on_drag(event, model, canvas)
+            self.current_tool.on_drag(event, controller, canvas)
 
-    def handle_release(self, event, model, canvas):
+    def handle_release(self, event, controller, canvas):
         if self.current_tool:
-            self.current_tool.on_release(event, model, canvas)
+            self.current_tool.on_release(event, controller, canvas)

@@ -61,6 +61,12 @@ class SkinModel:
 
         return True
 
+    def draw_pixel_to_layer(self, layer, x, y, color):
+        if layer == "base":
+            self.base_pixels[y][x] = color
+        elif layer == "overlay":
+            self.overlay_pixels[y][x] = color
+
     def get_display_color(self, x, y):
         op = self.overlay_pixels[y][x]
         if op[3] > 0:

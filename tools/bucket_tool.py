@@ -3,53 +3,74 @@ from tools.base_tool import BaseTool
 
 class BucketTool(BaseTool):
     def __init__(self):
+        self.changes = []
+        self.visited = set()
+
         self.mode = "area"  # "area" or "flood"
 
-    def on_press(self, event, model, canvas):
-        self._bucket(event, model, canvas)
+    def on_press(self, event, controller, canvas):
+        self.changes = []
+        self.visited = set()
+        self._bucket(event, controller, canvas)
 
-    def on_drag(self, event, model, canvas):
+    def on_drag(self, event, controller, canvas):
         pass
 
-    def on_release(self, event, model, canvas):
+    def on_release(self, event, controller, canvas):
         pass
 
-    def _bucket(self, event, model, canvas):
+    def _bucket(self, event, controller, canvas):
         x, y = canvas.to_skin_coords(event.x, event.y)
 
         if x is None:
             return
 
         if self.mode == "area":
-            self._fill_area(model, canvas, x, y)
+            self._fill_area(controller, x, y)
         elif self.mode == "flood":
-            self._flood_fill(model, canvas, x, y)
+            self._flood_fill(controller, x, y)
         elif self.mode == "area_flood":
-            self._flood_fill_in_area(model, canvas, x, y)
+            self._flood_fill_in_area(controller, x, y)
 
-    def _fill_area(self, model, canvas, start_x, start_y):
+    def _fill_area(self, controller, start_x, start_y):
+        model = controller.model
+        layer = "overlay" if model.edit_second_layer_only else "base"
+
+        # ここで編集可能か確認
+        if not model.can_edit_pixel(start_x, start_y):
+            return
 
         bounds = self.get_clicked_area(model, start_x, start_y)
         if bounds is None:
             return
 
         x1, y1, x2, y2 = bounds
-        color = canvas.controller.get_color()
+        new_color = controller.get_color()
 
-        updated = False
+        changes = []
+
         for x in range(x1, x2):
             for y in range(y1, y2):
-                changed = model.draw_pixel(x, y, color)
+                old = model.get_editing_color(x, y)
+                if old == new_color:
+                    continue
 
-                if changed:
-                    updated = True
+                model.draw_pixel_to_layer(layer, x, y, new_color)
+                changes.append((layer, x, y, old, new_color))
 
-        if updated:
-            canvas.redraw()
+        if changes:
+            controller.execute({"changes": changes})
 
-    def _flood_fill(self, model, canvas, start_x, start_y):
+    def _flood_fill(self, controller, start_x, start_y):
+        model = controller.model
+        layer = "overlay" if model.edit_second_layer_only else "base"
+
+        # ここで編集可能か確認
+        if not model.can_edit_pixel(start_x, start_y):
+            return
+
         target_color = model.get_editing_color(start_x, start_y)
-        new_color = canvas.controller.get_color()
+        new_color = controller.get_color()
 
         # 同じ色なら何もしない
         if target_color == new_color:
@@ -57,7 +78,7 @@ class BucketTool(BaseTool):
 
         stack = [(start_x, start_y)]
         visited = set()
-        updated = False
+        changes = []
 
         while stack:
             x, y = stack.pop()
@@ -70,13 +91,19 @@ class BucketTool(BaseTool):
             if not model.is_valid_position(x, y):
                 continue
 
+            if not model.can_edit_pixel(x, y):
+                continue
+
             # 元の色と違うならスキップ
             if model.get_editing_color(x, y) != target_color:
                 continue
 
-            changed = model.draw_pixel(x, y, new_color)
-            if changed:
-                updated = True
+            old = target_color
+
+            # 直接レイヤー指定で描画
+            model.draw_pixel_to_layer(layer, x, y, new_color)
+
+            changes.append((layer, x, y, old, new_color))
 
             # 上下左右を追加
             stack.append((x + 1, y))
@@ -84,10 +111,17 @@ class BucketTool(BaseTool):
             stack.append((x, y + 1))
             stack.append((x, y - 1))
 
-        if updated:
-            canvas.redraw()
+        if changes:
+            controller.execute({"changes": changes})
 
-    def _flood_fill_in_area(self, model, canvas, start_x, start_y):
+    def _flood_fill_in_area(self, controller, start_x, start_y):
+        model = controller.model
+        layer = "overlay" if model.edit_second_layer_only else "base"
+
+        # ここで編集可能か確認
+        if not model.can_edit_pixel(start_x, start_y):
+            return
+
         bounds = self.get_clicked_area(model, start_x, start_y)
         if bounds is None:
             return
@@ -95,14 +129,14 @@ class BucketTool(BaseTool):
         x1, y1, x2, y2 = bounds
 
         target_color = model.get_editing_color(start_x, start_y)
-        new_color = canvas.controller.get_color()
+        new_color = controller.get_color()
 
         if target_color == new_color:
             return
 
         stack = [(start_x, start_y)]
         visited = set()
-        updated = False
+        changes = []
 
         while stack:
             x, y = stack.pop()
@@ -117,17 +151,20 @@ class BucketTool(BaseTool):
             if model.get_editing_color(x, y) != target_color:
                 continue
 
-            changed = model.draw_pixel(x, y, new_color)
-            if changed:
-                updated = True
+            old = target_color
+
+            # 直接レイヤー指定で描画
+            model.draw_pixel_to_layer(layer, x, y, new_color)
+
+            changes.append((layer, x, y, old, new_color))
 
             stack.append((x + 1, y))
             stack.append((x - 1, y))
             stack.append((x, y + 1))
             stack.append((x, y - 1))
 
-        if updated:
-            canvas.redraw()
+        if changes:
+            controller.execute({"changes": changes})
 
     def get_clicked_area(self, model, grid_x, grid_y):
         if not model.edit_second_layer_only:
