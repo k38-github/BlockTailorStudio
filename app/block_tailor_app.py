@@ -117,8 +117,6 @@ class BlockTailorApp:
         # 🖌 ツールセクション
         # =========================
         self.tool_manager = ToolManager()
-        self.tool_manager.set_tool("pen")
-
         self.tools_panel = ToolsPanel(toolbar, self.tool_manager)
         self.tools_panel.pack(fill="x")
 
