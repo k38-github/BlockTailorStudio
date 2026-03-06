@@ -29,6 +29,9 @@ class ToolsPanel(tk.LabelFrame):
         self._add_icon_button(row, "bucket_area")
         self._add_icon_button(row, "bucket_flood")
 
+        self.tool_manager.set_tool("pen")
+        self._update_button_styles()
+
     def _add_icon_button(self, parent, name):
 
         if name == "bucket_area":

@@ -49,6 +49,7 @@ class BlockTailorApp:
         self.user_palette = None
         self.palette_panel = None
 
+        self.part_label = None
         self.skin_controller = None
         self.tool_manager = None
         self.tools_panel = None
@@ -69,6 +70,7 @@ class BlockTailorApp:
         self.root.grid_columnconfigure(0, weight=1)  # 左は伸びる
         self.root.grid_columnconfigure(1, weight=0)  # 右は固定
         self.root.grid_rowconfigure(0, weight=1)
+        self.root.grid_rowconfigure(1, weight=0)
 
         self.setup_ui()
 
@@ -126,8 +128,18 @@ class BlockTailorApp:
         self.model = SkinModel()
         self.skin_controller = SkinController(self.model, self.color_controller)
         self.canvas = SkinCanvas(
-            self.root, self.model, self.skin_controller, self.tool_manager
+            self.root, self.model, self.skin_controller, self.tool_manager, self
         )
+
+        # ⭐ Canvasを配置
+        self.canvas.grid(row=0, column=0, sticky="nsew")
+
+        # ⭐ 部位ステータス
+        self.part_label = tk.Label(
+            self.root, text="Part : 全体", anchor="w", relief="sunken", padx=5
+        )
+        self.part_label.grid(row=1, column=0, sticky="ew")
+
         self.skin_controller.set_on_change(self.canvas.redraw_all)
 
         self.history_panel = HistoryPanel(toolbar, self.skin_controller)
@@ -168,7 +180,12 @@ class BlockTailorApp:
             self.canvas.redraw()
 
     def set_part(self, value):
+
+        if self.current_part == value:
+            return
+
         self.current_part = value
+        self.part_label.config(text=f"Part : {value}")
 
     def run(self):
         self.root.mainloop()
