@@ -2,62 +2,73 @@ import tkinter as tk
 
 
 class ScrollableFrame(tk.Frame):
-    def __init__(self, parent, width=350):
-        super().__init__()
+    def __init__(self, parent, width=None):
+        super().__init__(parent)
 
-        self.container = tk.Frame(parent, width=width)
-        self.container.grid(row=0, column=1, sticky="ns")
-        self.container.grid_propagate(False)  # 幅固定
+        # Canvas
+        self.canvas = tk.Canvas(self, highlightthickness=0)
 
-        # スクロール用Canvas
-        self.canvas = tk.Canvas(self.container, highlightthickness=0)
-        self.canvas.grid(row=0, column=0, sticky="nsew")
-
-        # スクロールバー
+        # Scrollbar
         self.scrollbar = tk.Scrollbar(
-            self.container, orient="vertical", command=self.canvas.yview
+            self, orient="vertical", command=self.canvas.yview
         )
-        self.scrollbar.grid(row=0, column=1, sticky="ns")
 
         self.canvas.configure(yscrollcommand=self.scrollbar.set)
 
-        # 伸縮設定
-        self.container.grid_rowconfigure(0, weight=1)
-        self.container.grid_columnconfigure(0, weight=1)
+        # layout
+        self.canvas.pack(side="left", fill="both", expand=True)
+        self.scrollbar.pack(side="right", fill="y")
 
-        # 中身のFrame
+        # inner frame
         self.inner = tk.Frame(self.canvas)
-        self.canvas.create_window((0, 0), window=self.inner, anchor="nw")
-        self.canvas.configure(width=300)
 
-        self.inner.bind("<Configure>", self.update_scrollregion)
+        self.window = self.canvas.create_window(
+            (0, 0),
+            window=self.inner,
+            anchor="nw",
+        )
 
-        self._enable_parent_scroll()
+        if width:
+            self.canvas.configure(width=width)
+
+        # スクロール範囲更新
+        self.inner.bind("<Configure>", self._update_scrollregion)
+
+        # Canvas幅に合わせる
+        self.canvas.bind("<Configure>", self._fit_width)
+
+        # マウスホイール
+        self.canvas.bind("<Enter>", self._bind_mousewheel)
+        self.canvas.bind("<Leave>", self._unbind_mousewheel)
 
     @property
     def content(self):
         return self.inner
 
-    # サイズ変更時にスクロール範囲更新
-    def update_scrollregion(self, event=None):
+    def _update_scrollregion(self, event=None):
         self.canvas.configure(scrollregion=self.canvas.bbox("all"))
 
-    def _enable_parent_scroll(self):
+    def _fit_width(self, event):
+        canvas_width = event.width
+        self.canvas.itemconfig(self.window, width=canvas_width)
 
-        def _on_mousewheel(event):
-            if hasattr(event, "delta") and event.delta:
-                delta = int(-1 * (event.delta / 120))
-            else:
-                if event.num == 4:
-                    delta = -1
-                elif event.num == 5:
-                    delta = 1
-                else:
-                    delta = 0
+    def _bind_mousewheel(self, event):
+        self.canvas.bind_all("<MouseWheel>", self._on_mousewheel)
+        self.canvas.bind_all("<Button-4>", self._on_mousewheel)
+        self.canvas.bind_all("<Button-5>", self._on_mousewheel)
 
-            self.canvas.yview_scroll(delta, "units")
-            return "break"
+    def _unbind_mousewheel(self, event):
+        self.canvas.unbind_all("<MouseWheel>")
+        self.canvas.unbind_all("<Button-4>")
+        self.canvas.unbind_all("<Button-5>")
 
-        self.canvas.bind_all("<MouseWheel>", _on_mousewheel)
-        self.canvas.bind_all("<Button-4>", _on_mousewheel)
-        self.canvas.bind_all("<Button-5>", _on_mousewheel)
+    def _on_mousewheel(self, event):
+
+        if event.delta:  # Windows / Mac
+            self.canvas.yview_scroll(int(-event.delta / 120), "units")
+
+        elif event.num == 4:  # Linux scroll up
+            self.canvas.yview_scroll(-1, "units")
+
+        elif event.num == 5:  # Linux scroll down
+            self.canvas.yview_scroll(1, "units")

@@ -24,3 +24,16 @@ class SkinController:
 
     def set_on_change(self, callback):
         self.history = HistoryManager(self.model, on_change=callback)
+
+    def new_skin(self):
+
+        # モデル初期化
+        self.model.reset()
+
+        # Undo履歴リセット
+        self.history.undo_stack.clear()
+        self.history.redo_stack.clear()
+
+        # UI更新
+        if self.history.on_change:
+            self.history.on_change()

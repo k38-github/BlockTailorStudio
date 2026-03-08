@@ -1,16 +1,19 @@
 import tkinter as tk
-from tkinter import filedialog
+from tkinter import filedialog, messagebox
 
+from canvas.canvas_scroll_frame import CanvasScrollFrame
 from canvas.skin_canvas import SkinCanvas
 from controller.skin_controller import SkinController
 from core.skin_file_manager import SkinFileManager
 from core.skin_model import SkinModel
 from tools.tool_manager import ToolManager
+from ui.app_toolbar import AppToolbar
 from ui.color_controller import ColorController
 from ui.color_palette import ColorPalette
 from ui.color_picker import ColorPicker
 from ui.file_panel import FilePanel
 from ui.history_panel import HistoryPanel
+from ui.menu_bar import MenuBar
 from ui.palette_panel import PaletteIOPanel
 from ui.rgb_bars import RGBBars
 from ui.scrollable_frame import ScrollableFrame
@@ -38,6 +41,8 @@ class BlockTailorApp:
         # =====================
         # クラス定義
         # =====================
+        self.menu_bar = None
+        self.app_toolbar = None
         self.toolbar = None
         self.model = None
 
@@ -56,6 +61,7 @@ class BlockTailorApp:
 
         self.history_panel = None
 
+        self.canvas_area = None
         self.canvas = None
         self.toolbar_view = None
 
@@ -67,20 +73,53 @@ class BlockTailorApp:
         # =====================
         self.root = tk.Tk()
         self.root.title("BlockTailor Studio (Python)")
+        self.root.geometry("1020x900")
         self.root.grid_columnconfigure(0, weight=1)  # 左は伸びる
         self.root.grid_columnconfigure(1, weight=0)  # 右は固定
-        self.root.grid_rowconfigure(0, weight=1)
-        self.root.grid_rowconfigure(1, weight=0)
+        self.root.grid_rowconfigure(0, weight=0)  # toolbar
+        self.root.grid_rowconfigure(1, weight=1)  # canvas
+        self.root.grid_rowconfigure(2, weight=0)  # status
 
         self.setup_ui()
 
     def setup_ui(self):
+        # =====================
+        # モデル
+        # =====================
+        self.model = SkinModel()
 
         # =====================
-        # 📦 toolbar
+        # カラー
         # =====================
-        self.toolbar = ScrollableFrame(self.root)
-        self.toolbar.grid(row=0, column=1, sticky="ns")
+        self.color_controller = ColorController()
+
+        # =====================
+        # コントローラ
+        # =====================
+        self.skin_controller = SkinController(self.model, self.color_controller)
+
+        # =====================
+        # メニューバー
+        # =====================
+        self.menu_bar = MenuBar(self.root, self)
+
+        # =====================
+        # 🧰 アプリツールバー
+        # =====================
+        self.app_toolbar = AppToolbar(
+            self.root,
+            on_save=self.save_skin,
+            on_load=self.load_skin,
+            on_undo=self.skin_controller.undo,
+            on_redo=self.skin_controller.redo,
+        )
+        self.app_toolbar.grid(row=0, column=0, columnspan=2, sticky="ew")
+
+        # =====================
+        # 📦 ツールバー
+        # =====================
+        self.toolbar = ScrollableFrame(self.root, width=320)
+        self.toolbar.grid(row=1, column=1, sticky="ns")
         toolbar = self.toolbar.content
 
         # =========================
@@ -90,7 +129,6 @@ class BlockTailorApp:
         color_section.pack(fill="x", pady=5)
 
         # カラーサークル
-        self.color_controller = ColorController()
         self.color_picker = ColorPicker(
             color_section, self.WHEEL_SIZE, self.RING_WIDTH, self.color_controller
         )
@@ -125,25 +163,27 @@ class BlockTailorApp:
         # =========================
         # スキンキャンバスセクション
         # =========================
-        self.model = SkinModel()
-        self.skin_controller = SkinController(self.model, self.color_controller)
+        self.canvas_area = CanvasScrollFrame(self.root)
+        self.canvas_area.grid(row=1, column=0, sticky="nsew")
+
         self.canvas = SkinCanvas(
-            self.root, self.model, self.skin_controller, self.tool_manager, self
+            self.canvas_area.content,
+            self.model,
+            self.skin_controller,
+            self.tool_manager,
+            self,
         )
+        self.canvas.pack()
 
-        # ⭐ Canvasを配置
-        self.canvas.grid(row=0, column=0, sticky="nsew")
-
-        # ⭐ 部位ステータス
         self.part_label = tk.Label(
             self.root, text="Part : 全体", anchor="w", relief="sunken", padx=5
         )
-        self.part_label.grid(row=1, column=0, sticky="ew")
+        self.part_label.grid(row=2, column=0, sticky="ew")
 
         self.skin_controller.set_on_change(self.canvas.redraw_all)
 
-        self.history_panel = HistoryPanel(toolbar, self.skin_controller)
-        self.history_panel.pack(fill="x", pady=5)
+        # self.history_panel = HistoryPanel(toolbar, self.skin_controller)
+        # self.history_panel.pack(fill="x", pady=5)
 
         self.root.bind("<Control-z>", lambda e: self.skin_controller.undo())
         self.root.bind("<Control-y>", lambda e: self.skin_controller.redo())
@@ -163,8 +203,17 @@ class BlockTailorApp:
         self.file_manager = SkinFileManager(self.model)
 
     # =====================
-    # 保存 / 読み込み
+    # 新規作成 / 保存 / 読み込み
     # =====================
+    def new_skin(self):
+        if not messagebox.askyesno(
+            "New Skin", "現在の作業内容を破棄して新規作成しますか？"
+        ):
+            return
+
+        self.skin_controller.new_skin()
+        self.canvas.redraw_all()
+
     def save_skin(self):
         path = filedialog.asksaveasfilename(defaultextension=".png")
         if not path:

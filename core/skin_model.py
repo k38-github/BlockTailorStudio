@@ -122,3 +122,19 @@ class SkinModel:
                     self.overlay_pixels[y][x] = pixel
                 else:
                     self.base_pixels[y][x] = pixel
+
+    def reset(self):
+        # 第一レイヤーをクリア
+        self.base_pixels = [
+            self.TRANSPARENT for _ in range(self.SKIN_SIZE)
+        ] * self.SKIN_SIZE
+        self.base_pixels = [
+            [self.TRANSPARENT for _ in range(self.SKIN_SIZE)]
+            for _ in range(self.SKIN_SIZE)
+        ]
+
+        # 第二レイヤーをクリア
+        self.overlay_pixels = [
+            [self.TRANSPARENT for _ in range(self.SKIN_SIZE)]
+            for _ in range(self.SKIN_SIZE)
+        ]

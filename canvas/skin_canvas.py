@@ -1,8 +1,10 @@
 import tkinter as tk
 
 
-class SkinCanvas:
+class SkinCanvas(tk.Frame):
     def __init__(self, parent, model, controller, tool_manager, app):
+        super().__init__(parent)
+
         self.model = model
         self.controller = controller
         self.tool_manager = tool_manager
@@ -25,16 +27,13 @@ class SkinCanvas:
         self.edit_second_layer_var = None
         self.hover_part = None
 
-        self.canvas_frame = tk.Frame(parent)
-        self.canvas_frame.grid(row=0, column=0, sticky="nsew")
-
         self.canvas = tk.Canvas(
-            self.canvas_frame,
+            self,
             width=self.CANVAS_SIZE,
             height=self.CANVAS_SIZE,
             bg="#FFFFFF",
         )
-        self.canvas.pack(expand=True)
+        self.canvas.pack(fill="both", expand=True)
 
         self.cursor_rect = self.canvas.create_rectangle(
             0,
@@ -345,9 +344,3 @@ class SkinCanvas:
         self.app.set_part("-")
 
         self.canvas.coords(self.hover_rect, 0, 0, 0, 0)
-
-    def grid(self, **kwargs):
-        self.canvas.grid(**kwargs)
-
-    def pack(self, **kwargs):
-        self.canvas.pack(**kwargs)
