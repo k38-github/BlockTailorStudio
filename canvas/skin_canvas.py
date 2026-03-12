@@ -262,10 +262,16 @@ class SkinCanvas(tk.Frame):
             self.canvas.coords(self.cursor_rect, 0, 0, 0, 0)
             return
 
+        tool = self.tool_manager.current_tool
+
+        size = 1
+        if tool == self.tool_manager.tools["eraser"]:
+            size = tool.size
+
         x1 = self.MARGIN + x * self.PIXEL_SIZE
         y1 = self.MARGIN + y * self.PIXEL_SIZE
-        x2 = self.MARGIN + (x + 1) * self.PIXEL_SIZE
-        y2 = self.MARGIN + (y + 1) * self.PIXEL_SIZE
+        x2 = self.MARGIN + (x + size) * self.PIXEL_SIZE
+        y2 = self.MARGIN + (y + size) * self.PIXEL_SIZE
 
         self.canvas.coords(self.cursor_rect, x1, y1, x2, y2)
 

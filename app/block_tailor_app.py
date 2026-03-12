@@ -1,11 +1,15 @@
 import tkinter as tk
 from tkinter import filedialog, messagebox
 
+from PIL import Image
+
 from canvas.canvas_scroll_frame import CanvasScrollFrame
 from canvas.skin_canvas import SkinCanvas
 from controller.skin_controller import SkinController
 from core.skin_file_manager import SkinFileManager
 from core.skin_model import SkinModel
+from skin_maker.skin_maker import SkinMaker
+from skin_maker.template_manager import TemplateManager
 from tools.tool_manager import ToolManager
 from ui.app_toolbar import AppToolbar
 from ui.color_controller import ColorController
@@ -21,6 +25,7 @@ from ui.toolbar_view import ToolbarView
 from ui.tools_panel import ToolsPanel
 from ui.user_palette import UserPalette
 from core.skin_areas import FIRST_LAYER_AREAS, SECOND_LAYER_AREAS
+from skin_maker.skin_composer import SkinComposer
 
 
 class BlockTailorApp:
@@ -69,6 +74,13 @@ class BlockTailorApp:
         self.file_manager = None
 
         # =====================
+        # スキンメーカー
+        # =====================
+        self.template_manager = None
+        self.skin_composer = None
+        self.skin_maker = None
+
+        # =====================
         # 初期セットアップ
         # =====================
         self.root = tk.Tk()
@@ -87,6 +99,15 @@ class BlockTailorApp:
         # モデル
         # =====================
         self.model = SkinModel()
+
+        # =====================
+        # スキンメーカー
+        # =====================
+        self.template_manager = TemplateManager()
+
+        self.skin_composer = SkinComposer(self.model)
+
+        self.skin_maker = SkinMaker(self.template_manager, self.skin_composer)
 
         # =====================
         # カラー
@@ -193,6 +214,27 @@ class BlockTailorApp:
         # =========================
         self.toolbar_view = ToolbarView(toolbar, self.model, self.canvas)
 
+        # =====================
+        # スキンメーカーセクション
+        # =====================
+        skin_maker_section = tk.LabelFrame(toolbar, text="🧬 Skin Maker")
+        skin_maker_section.pack(fill="x", pady=5)
+
+        for category, templates in self.template_manager.templates.items():
+
+            frame = tk.LabelFrame(skin_maker_section, text=category)
+            frame.pack(fill="x", pady=2)
+
+            for template in templates:
+
+                btn = tk.Button(
+                    frame,
+                    text=template["name"],
+                    command=lambda c=category, t=template: self.select_template(c, t),
+                )
+
+                btn.pack(side="left", padx=2, pady=2)
+
         # =========================
         # 💾 ファイルセクション
         # =========================
@@ -235,6 +277,11 @@ class BlockTailorApp:
 
         self.current_part = value
         self.part_label.config(text=f"Part : {value}")
+
+    def select_template(self, category, template):
+        self.skin_maker.select(category, template)
+        self.skin_maker.build()
+        self.canvas.redraw_all()
 
     def run(self):
         self.root.mainloop()

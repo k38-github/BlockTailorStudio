@@ -2,7 +2,8 @@ from tools.base_tool import BaseTool
 
 
 class EraserTool(BaseTool):
-    def __init__(self):
+    def __init__(self, size=1):
+        self.size = size
         self.changes = []
         self.visited = set()
 
@@ -23,27 +24,31 @@ class EraserTool(BaseTool):
         model = controller.model
         x, y = canvas.to_skin_coords(event.x, event.y)
 
-        if not model.is_valid_position(x, y):
-            return
-
-        if not model.can_edit_pixel(x, y):
-            return
-
-        if (x, y) in self.visited:
-            return
-
-        # 現在レイヤー取得
         layer = "overlay" if model.edit_second_layer_only else "base"
 
-        old = model.get_editing_color(x, y)
-        new = model.TRANSPARENT
+        for dx in range(self.size):
+            for dy in range(self.size):
 
-        if old == new:
-            return
+                px = x + dx
+                py = y + dy
 
-        # 直接レイヤー指定で消す
-        model.draw_pixel_to_layer(layer, x, y, new)
-        canvas.draw_pixels(x, y)
+                if not model.is_valid_position(px, py):
+                    continue
 
-        self.changes.append((layer, x, y, old, new))
-        self.visited.add((x, y))
+                if not model.can_edit_pixel(px, py):
+                    continue
+
+                if (px, py) in self.visited:
+                    continue
+
+                old = model.get_editing_color(px, py)
+                new = model.TRANSPARENT
+
+                if old == new:
+                    continue
+
+                model.draw_pixel_to_layer(layer, px, py, new)
+                canvas.draw_pixels(px, py)
+
+                self.changes.append((layer, px, py, old, new))
+                self.visited.add((px, py))

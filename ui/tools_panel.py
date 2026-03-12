@@ -9,6 +9,9 @@ class ToolsPanel(tk.LabelFrame):
         self.tool_manager = tool_manager
         self.buttons = {}
 
+        self._eraser_menu = None
+        self.eraser_size_var = tk.IntVar(value=1)
+
         self.icons = {
             "pen": tk.PhotoImage(file="assets/icons/pen32.png"),
             "eyedropper": tk.PhotoImage(file="assets/icons/dropper32.png"),
@@ -53,6 +56,9 @@ class ToolsPanel(tk.LabelFrame):
         )
 
         self._add_hover_effect(btn, name)
+
+        if name == "eraser":
+            btn.bind("<Button-3>", self._show_eraser_menu)
 
         btn.pack(side="left", padx=4, pady=4)
 
@@ -177,3 +183,30 @@ class ToolsPanel(tk.LabelFrame):
             return current == tools["bucket"] and tools["bucket"].mode == "flood"
 
         return False
+
+    def _show_eraser_menu(self, event):
+
+        menu = tk.Menu(self.winfo_toplevel(), tearoff=False)
+
+        menu.add_command(label="消しゴムサイズ")
+        menu.add_separator()
+
+        for size in (1, 2, 4, 8):
+            menu.add_radiobutton(
+                label=f"x{size}",
+                value=size,
+                variable=self.eraser_size_var,
+                command=lambda s=size: self._set_eraser_size(s),
+            )
+
+        menu.tk_popup(event.x_root, event.y_root)
+
+    def _set_eraser_size(self, size):
+
+        self.eraser_size_var.set(size)
+
+        eraser = self.tool_manager.tools["eraser"]
+        eraser.size = size
+
+        self.tool_manager.set_tool("eraser")
+        self._update_button_styles()
