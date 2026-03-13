@@ -1,4 +1,5 @@
 from controller.history_manager import HistoryManager
+from core.skin_types import CLASSIC
 
 
 class SkinController:
@@ -25,10 +26,10 @@ class SkinController:
     def set_on_change(self, callback):
         self.history = HistoryManager(self.model, on_change=callback)
 
-    def new_skin(self):
+    def new_skin(self, skin_type=CLASSIC):
 
         # モデル初期化
-        self.model.reset()
+        self.model.reset(skin_type)
 
         # Undo履歴リセット
         self.history.undo_stack.clear()

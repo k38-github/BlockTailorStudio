@@ -172,6 +172,7 @@ class SkinCanvas(tk.Frame):
     def redraw(self):
         self.canvas.delete(self.LAYER_MASK)
         self.canvas.delete(self.LAYER_FRAME)
+        self.canvas.delete(self.LAYER_GRID)
 
         self.draw_pixel_grid_lines()
         self.draw_layer_invalid_mask()
@@ -251,9 +252,10 @@ class SkinCanvas(tk.Frame):
         self.controller.set_color(color)
 
     def redraw_all(self):
-        for y in range(self.model.SKIN_SIZE):
-            for x in range(self.model.SKIN_SIZE):
-                self.draw_pixels(x, y)
+        self.redraw()
+        # for y in range(self.model.SKIN_SIZE):
+        #    for x in range(self.model.SKIN_SIZE):
+        #        self.draw_pixels(x, y)
 
     def on_move(self, event):
         x, y = self.to_skin_coords(event.x, event.y)

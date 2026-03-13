@@ -1,12 +1,9 @@
 import tkinter as tk
 from tkinter import filedialog, messagebox
 
-from PIL import Image
-
 from canvas.canvas_scroll_frame import CanvasScrollFrame
 from canvas.skin_canvas import SkinCanvas
 from controller.skin_controller import SkinController
-from core.skin_file_manager import SkinFileManager
 from core.skin_model import SkinModel
 from skin_maker.skin_maker import SkinMaker
 from skin_maker.template_manager import TemplateManager
@@ -15,8 +12,7 @@ from ui.app_toolbar import AppToolbar
 from ui.color_controller import ColorController
 from ui.color_palette import ColorPalette
 from ui.color_picker import ColorPicker
-from ui.file_panel import FilePanel
-from ui.history_panel import HistoryPanel
+from ui.dialogs.skin_type_dialog import SkinTypeDialog
 from ui.menu_bar import MenuBar
 from ui.palette_panel import PaletteIOPanel
 from ui.rgb_bars import RGBBars
@@ -203,9 +199,6 @@ class BlockTailorApp:
 
         self.skin_controller.set_on_change(self.canvas.redraw_all)
 
-        # self.history_panel = HistoryPanel(toolbar, self.skin_controller)
-        # self.history_panel.pack(fill="x", pady=5)
-
         self.root.bind("<Control-z>", lambda e: self.skin_controller.undo())
         self.root.bind("<Control-y>", lambda e: self.skin_controller.redo())
 
@@ -217,7 +210,7 @@ class BlockTailorApp:
         # =====================
         # スキンメーカーセクション
         # =====================
-        skin_maker_section = tk.LabelFrame(toolbar, text="🧬 Skin Maker")
+        skin_maker_section = tk.LabelFrame(toolbar, text="🧬 スキンメーカー")
         skin_maker_section.pack(fill="x", pady=5)
 
         for category, templates in self.template_manager.templates.items():
@@ -235,25 +228,23 @@ class BlockTailorApp:
 
                 btn.pack(side="left", padx=2, pady=2)
 
-        # =========================
-        # 💾 ファイルセクション
-        # =========================
-        self.file_panel = FilePanel(
-            toolbar, on_save=self.save_skin, on_load=self.load_skin
-        )
-        self.file_panel.pack()
-        self.file_manager = SkinFileManager(self.model)
-
     # =====================
     # 新規作成 / 保存 / 読み込み
     # =====================
     def new_skin(self):
+
         if not messagebox.askyesno(
             "New Skin", "現在の作業内容を破棄して新規作成しますか？"
         ):
             return
 
-        self.skin_controller.new_skin()
+        dialog = SkinTypeDialog(self.root)
+        skin_type = dialog.result
+
+        if skin_type is None:
+            return
+
+        self.skin_controller.new_skin(skin_type)
         self.canvas.redraw_all()
 
     def save_skin(self):

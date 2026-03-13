@@ -1,16 +1,28 @@
 from typing import Optional
 from PIL import Image
 
-from core.skin_areas import FIRST_LAYER_AREAS, SECOND_LAYER_AREAS
+from core.skin_areas import (
+    FIRST_LAYER_AREAS,
+    SECOND_LAYER_AREAS,
+    FIRST_LAYER_AREAS_SLIM,
+    SECOND_LAYER_AREAS_SLIM,
+)
+from core.skin_types import CLASSIC
 
 
 class SkinModel:
     SKIN_SIZE = 64
     TRANSPARENT = (0, 0, 0, 0)
 
-    def __init__(self):
-        self.first_layer_areas = FIRST_LAYER_AREAS
-        self.second_layer_areas = SECOND_LAYER_AREAS
+    def __init__(self, skin_type=CLASSIC):
+        self.skin_type = skin_type
+
+        if skin_type == CLASSIC:
+            self.first_layer_areas = FIRST_LAYER_AREAS
+            self.second_layer_areas = SECOND_LAYER_AREAS
+        else:
+            self.first_layer_areas = FIRST_LAYER_AREAS_SLIM
+            self.second_layer_areas = SECOND_LAYER_AREAS_SLIM
 
         self.edit_second_layer_only = False
 
@@ -123,11 +135,18 @@ class SkinModel:
                 else:
                     self.base_pixels[y][x] = pixel
 
-    def reset(self):
+    def reset(self, skin_type=CLASSIC):
+
+        self.skin_type = skin_type
+
+        if skin_type == CLASSIC:
+            self.first_layer_areas = FIRST_LAYER_AREAS
+            self.second_layer_areas = SECOND_LAYER_AREAS
+        else:
+            self.first_layer_areas = FIRST_LAYER_AREAS_SLIM
+            self.second_layer_areas = SECOND_LAYER_AREAS_SLIM
+
         # 第一レイヤーをクリア
-        self.base_pixels = [
-            self.TRANSPARENT for _ in range(self.SKIN_SIZE)
-        ] * self.SKIN_SIZE
         self.base_pixels = [
             [self.TRANSPARENT for _ in range(self.SKIN_SIZE)]
             for _ in range(self.SKIN_SIZE)
