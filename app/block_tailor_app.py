@@ -1,9 +1,14 @@
+import os
+import subprocess
+import sys
+import threading
 import tkinter as tk
 from tkinter import filedialog, messagebox
 
 from canvas.canvas_scroll_frame import CanvasScrollFrame
 from canvas.skin_canvas import SkinCanvas
 from controller.skin_controller import SkinController
+from core.skin_file_manager import SkinFileManager
 from core.skin_model import SkinModel
 from skin_maker.skin_maker import SkinMaker
 from skin_maker.template_manager import TemplateManager
@@ -80,7 +85,7 @@ class BlockTailorApp:
         # 初期セットアップ
         # =====================
         self.root = tk.Tk()
-        self.root.title("BlockTailor Studio (Python)")
+        self.root.title("BlockTailor Studio")
         self.root.geometry("1020x900")
         self.root.grid_columnconfigure(0, weight=1)  # 左は伸びる
         self.root.grid_columnconfigure(1, weight=0)  # 右は固定
@@ -129,6 +134,7 @@ class BlockTailorApp:
             on_load=self.load_skin,
             on_undo=self.skin_controller.undo,
             on_redo=self.skin_controller.redo,
+            on_3dview=self.start_preview,
         )
         self.app_toolbar.grid(row=0, column=0, columnspan=2, sticky="ew")
 
@@ -228,6 +234,11 @@ class BlockTailorApp:
 
                 btn.pack(side="left", padx=2, pady=2)
 
+        # =====================
+        # ファイルセクション
+        # =====================
+        self.file_manager = SkinFileManager(self.model)
+
     # =====================
     # 新規作成 / 保存 / 読み込み
     # =====================
@@ -273,6 +284,16 @@ class BlockTailorApp:
         self.skin_maker.select(category, template)
         self.skin_maker.build()
         self.canvas.redraw_all()
+
+    def start_preview(self):
+        img = self.model.export_image()
+        img.save("preview/skin.png")
+
+        preview_script = os.path.join(
+            os.path.dirname(__file__), "..", "preview", "skin_preview_3d.py"
+        )
+
+        subprocess.Popen([sys.executable, preview_script])
 
     def run(self):
         self.root.mainloop()

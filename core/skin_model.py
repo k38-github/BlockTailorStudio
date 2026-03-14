@@ -126,6 +126,9 @@ class SkinModel:
                 img.putpixel((x, y), op if op[3] > 0 else bp)
         return img
 
+    def get_image(self):
+        return self.export_image()
+
     def import_image(self, img):
         for y in range(self.SKIN_SIZE):
             for x in range(self.SKIN_SIZE):
