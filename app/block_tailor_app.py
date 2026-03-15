@@ -286,14 +286,17 @@ class BlockTailorApp:
         self.canvas.redraw_all()
 
     def start_preview(self):
+
         img = self.model.export_image()
-        img.save("preview/skin.png")
 
-        preview_script = os.path.join(
-            os.path.dirname(__file__), "..", "preview", "skin_preview_3d.py"
-        )
+        if hasattr(self, "preview_dialog") and self.preview_dialog.winfo_exists():
+            self.preview_dialog.update_texture(img)
+            self.preview_dialog.lift()
+            return
 
-        subprocess.Popen([sys.executable, preview_script])
+        from preview.preview_dialog import PreviewDialog
+
+        self.preview_dialog = PreviewDialog(self.root, img)
 
     def run(self):
         self.root.mainloop()

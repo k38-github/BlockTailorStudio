@@ -184,6 +184,7 @@ class SkinCanvas(tk.Frame):
         self.draw_frameline()
 
         self.canvas.tag_raise(self.LAYER_CURSOR)
+        self.update_preview()
 
     def draw_face_frames(self, face_dict, color="#800000"):
         for name, (x1, y1, x2, y2) in face_dict.items():
@@ -253,9 +254,6 @@ class SkinCanvas(tk.Frame):
 
     def redraw_all(self):
         self.redraw()
-        # for y in range(self.model.SKIN_SIZE):
-        #    for x in range(self.model.SKIN_SIZE):
-        #        self.draw_pixels(x, y)
 
     def on_move(self, event):
         x, y = self.to_skin_coords(event.x, event.y)
@@ -352,3 +350,9 @@ class SkinCanvas(tk.Frame):
         self.app.set_part("-")
 
         self.canvas.coords(self.hover_rect, 0, 0, 0, 0)
+
+    def update_preview(self):
+
+        if hasattr(self.app, "preview_dialog") and self.app.preview_dialog:
+            img = self.model.export_image()
+            self.app.preview_dialog.update_skin(img)

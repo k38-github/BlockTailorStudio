@@ -2,24 +2,29 @@ from direct.showbase.ShowBase import ShowBase
 from direct.showbase.ShowBaseGlobal import globalClock
 from panda3d.core import *
 from PIL import Image
-import os
 import time
-
-SKIN_PATH = "skin.png"
 
 ROTATE_SPEED = 100
 
 
 class SkinPreview(ShowBase):
 
-    def __init__(self):
+    def __init__(self, frame, img):
+        window_id = frame.winfo_id()
+
+        loadPrcFileData("", "window-type embedded")
+        loadPrcFileData("", f"parent-window-handle {window_id}")
+        loadPrcFileData("", "win-origin 0 0")
+
+        w = frame.winfo_width()
+        h = frame.winfo_height()
+        loadPrcFileData("", f"win-size {w} {h}")
 
         super().__init__()
 
-        props = WindowProperties()
-        props.setTitle("BlockTailorStudio - 3D Preview")
-        self.win.requestProperties(props)
+        self.second_layer = None
 
+        self.img = img
         self.is_slim = True
         self.disableMouse()
 
@@ -53,10 +58,13 @@ class SkinPreview(ShowBase):
 
         self.setup_light()
 
-        self.character = self.render.attachNewNode("character")
+        self.base_layer = self.render.attachNewNode("base_layer")
+        self.second_layer = self.render.attachNewNode("second_layer")
 
-        self.build_character()
+        self.build_character_base_layer()
+        self.build_character_second_layer()
 
+        self.texture = pil_to_texture(self.img)
         self.load_skin()
 
         self.taskMgr.add(self.update_task, "update")
@@ -81,85 +89,83 @@ class SkinPreview(ShowBase):
 
     # ---------------------
 
-    def build_character(self):
+    def build_character_base_layer(self):
 
         self.head = build_head()
-        self.head.reparentTo(self.character)
+        self.head.reparentTo(self.base_layer)
         self.head.setZ(22)
 
         self.body = build_body()
-        self.body.reparentTo(self.character)
+        self.body.reparentTo(self.base_layer)
         self.body.setZ(12)
 
         if self.is_slim:
             self.arm_r = build_right_arm_slim()
-            self.arm_r.reparentTo(self.character)
+            self.arm_r.reparentTo(self.base_layer)
             self.arm_r.setPos(-5.5, 0, 12)
 
             self.arm_l = build_left_arm_slim()
-            self.arm_l.reparentTo(self.character)
+            self.arm_l.reparentTo(self.base_layer)
             self.arm_l.setPos(5.5, 0, 12)
         else:
             self.arm_r = build_right_arm_slim()
-            self.arm_r.reparentTo(self.character)
+            self.arm_r.reparentTo(self.base_layer)
             self.arm_r.setPos(-6, 0, 12)
 
             self.arm_l = build_left_arm_slim()
-            self.arm_l.reparentTo(self.character)
+            self.arm_l.reparentTo(self.base_layer)
             self.arm_l.setPos(6, 0, 12)
 
         self.leg_r = build_right_leg()
-        self.leg_r.reparentTo(self.character)
+        self.leg_r.reparentTo(self.base_layer)
         self.leg_r.setPos(-2, 0, 0)
 
         self.leg_l = build_left_leg()
-        self.leg_l.reparentTo(self.character)
+        self.leg_l.reparentTo(self.base_layer)
         self.leg_l.setPos(2, 0, 0)
 
+    def build_character_second_layer(self):
         self.head_outer = build_head_outer()
-        self.head_outer.reparentTo(self.character)
+        self.head_outer.reparentTo(self.second_layer)
         self.head_outer.setZ(22)
 
         self.body_outer = build_body_outer()
-        self.body_outer.reparentTo(self.character)
+        self.body_outer.reparentTo(self.second_layer)
         self.body_outer.setZ(12)
 
         if self.is_slim:
             self.arm_r_outer = build_right_arm_outer_slim()
-            self.arm_r_outer.reparentTo(self.character)
+            self.arm_r_outer.reparentTo(self.second_layer)
             self.arm_r_outer.setPos(-5.5, 0, 12)
 
             self.arm_l_outer = build_left_arm_outer_slim()
-            self.arm_l_outer.reparentTo(self.character)
+            self.arm_l_outer.reparentTo(self.second_layer)
             self.arm_l_outer.setPos(5.5, 0, 12)
         else:
             self.arm_r_outer = build_right_arm_outer()
-            self.arm_r_outer.reparentTo(self.character)
+            self.arm_r_outer.reparentTo(self.second_layer)
             self.arm_r_outer.setPos(-6, 0, 12)
 
             self.arm_l_outer = build_left_arm_outer()
-            self.arm_l_outer.reparentTo(self.character)
+            self.arm_l_outer.reparentTo(self.second_layer)
             self.arm_l_outer.setPos(6, 0, 12)
 
         self.leg_r_outer = build_right_leg_outer()
-        self.leg_r_outer.reparentTo(self.character)
+        self.leg_r_outer.reparentTo(self.second_layer)
         self.leg_r_outer.setPos(-2, 0, 0)
 
         self.leg_l_outer = build_left_leg_outer()
-        self.leg_l_outer.reparentTo(self.character)
+        self.leg_l_outer.reparentTo(self.second_layer)
         self.leg_l_outer.setPos(2, 0, 0)
 
     # ---------------------
 
     def load_skin(self):
 
-        path = os.path.join(os.path.dirname(__file__), SKIN_PATH)
+        self.is_slim = is_slim_skin(self.img)
 
-        img = Image.open(path).convert("RGBA")
-
-        self.is_slim = is_slim_skin(img)
-
-        tex = pil_to_texture(img)
+        tex = self.texture
+        # tex = pil_to_texture(self.img)
 
         for part in [
             self.head,
@@ -256,6 +262,24 @@ class SkinPreview(ShowBase):
         self.update_camera()
 
         return task.cont
+
+    def update_texture(self, img):
+
+        img = img.transpose(Image.Transpose.FLIP_TOP_BOTTOM)
+
+        self.texture.setRamImageAs(img.tobytes(), "RGBA")
+        # pixels = model.get_raw_pixels()
+        # self.texture.setRamImage(pixels)
+
+    def show_second_layer(self):
+
+        if self.second_layer:
+            self.second_layer.show()
+
+    def hide_second_layer(self):
+
+        if self.second_layer:
+            self.second_layer.hide()
 
 
 # --------------------------------
@@ -610,9 +634,3 @@ def is_slim_skin(img):
     r, g, b, a = img.getpixel((54, 20))
 
     return a == 0
-
-
-if __name__ == "__main__":
-
-    app = SkinPreview()
-    app.run()

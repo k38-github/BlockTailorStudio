@@ -29,4 +29,4 @@ class AppToolbar(tk.Frame):
 
         btn = tk.Button(self, text="📽️", command=on_3dview)
         btn.pack(side="left", padx=2)
-        ToolTip(btn, "3Dビュー")
+        ToolTip(btn, "3Dプレビュー")
