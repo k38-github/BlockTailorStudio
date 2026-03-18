@@ -10,17 +10,17 @@ ROTATE_SPEED = 100
 class SkinPreview(ShowBase):
 
     def __init__(self, frame, img):
+        frame.update_idletasks()
+
         window_id = frame.winfo_id()
 
         loadPrcFileData("", "window-type embedded")
         loadPrcFileData("", f"parent-window-handle {window_id}")
         loadPrcFileData("", "win-origin 0 0")
 
-        w = frame.winfo_width()
-        h = frame.winfo_height()
-        loadPrcFileData("", f"win-size {w} {h}")
-
         super().__init__()
+
+        frame.bind("<Configure>", self.on_resize)
 
         self.second_layer = None
 
@@ -280,6 +280,15 @@ class SkinPreview(ShowBase):
 
         if self.second_layer:
             self.second_layer.hide()
+
+    def on_resize(self, event):
+        if event.width <= 1 or event.height <= 1:
+            return
+
+        if self.win:
+            self.win.requestProperties(
+                WindowProperties(size=(event.width, event.height))
+            )
 
 
 # --------------------------------
