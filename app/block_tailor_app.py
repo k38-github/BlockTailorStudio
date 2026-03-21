@@ -161,10 +161,6 @@ class BlockTailorApp:
         self.rgb = RGBBars(color_section, controller=self.color_controller)
         self.rgb.pack(fill="x", pady=10)
 
-        # カラーパレット
-        self.color_palette = ColorPalette(color_section, self.color_controller)
-        self.color_palette.pack()
-
         # ユーザーパレット
         self.user_palette = UserPalette(
             color_section,

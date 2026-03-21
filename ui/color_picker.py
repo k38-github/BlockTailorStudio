@@ -39,7 +39,11 @@ class ColorPicker(tk.Frame):
         # ==========================
         # Canvas
         self.canvas = tk.Canvas(
-            self, width=self.CANVAS_SIZE_X, height=self.CANVAS_SIZE_Y
+            self,
+            width=self.CANVAS_SIZE_X,
+            height=self.CANVAS_SIZE_Y,
+            highlightthickness=0,
+            bd=0,
         )
         self.canvas.pack()
 
