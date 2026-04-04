@@ -222,16 +222,21 @@ class ColorPreview(tk.Frame):
     def on_global_click(self, event):
         widget = event.widget
 
-        # ★ Entry自身をクリックした場合は無視
+        if not hasattr(widget, "winfo_toplevel"):
+            return
+
+        # トップレベル取得
+        toplevel = self.winfo_toplevel()
+
+        # 自分のウィンドウ外なら無視
+        if widget.winfo_toplevel() != toplevel:
+            return
+
+        # Entry自身は無視
         if widget == self.color_entry:
             return
 
-        # ★ Entry配下（内部クリック）も無視したいならこれ
-        if str(widget).startswith(str(self.color_entry)):
-            return
-
-        # ★ フォーカス外す
-        self.color_entry.master.focus_set()
+        self.winfo_toplevel().focus_set()
 
     # ==========================
     # 通常カラー
