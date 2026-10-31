@@ -1,0 +1,13 @@
+{
+  "name": "Maid_Costume",
+  "category": "clothes",
+  "areas": [
+    "BODY",
+    "ARMS",
+    "LEGS",
+    "JACKET",
+    "SLEEVES",
+    "PANTS"
+  ],
+  "author": "default"
+}

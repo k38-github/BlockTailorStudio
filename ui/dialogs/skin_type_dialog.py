@@ -7,6 +7,7 @@ class SkinTypeDialog(BaseDialog):
 
     def __init__(self, parent):
         self.skin_type = tk.StringVar(value=CLASSIC)
+        self.use_character_maker = tk.BooleanVar(value=True)
         super().__init__(parent, "New Skin")
 
     def build_body(self, master):
@@ -27,5 +28,12 @@ class SkinTypeDialog(BaseDialog):
             value=SLIM,
         ).pack(anchor="w")
 
+        tk.Checkbutton(
+            master, text="キャラメイクを行う", variable=self.use_character_maker
+        ).pack(anchor="w", pady=(10, 0))
+
     def get_result(self):
-        return self.skin_type.get()
+        return {
+            "skin_type": self.skin_type.get(),
+            "use_character_maker": self.use_character_maker.get(),
+        }

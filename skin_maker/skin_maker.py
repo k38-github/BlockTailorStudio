@@ -1,7 +1,7 @@
 class SkinMaker:
 
     def __init__(self, template_manager, composer):
-        self.ORDER = ["face", "hair", "clothes", "accessory"]
+        self.ORDER = ["skin", "hair", "clothes", "accessory"]
 
         self.template_manager = template_manager
         self.composer = composer

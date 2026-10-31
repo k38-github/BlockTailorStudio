@@ -1,7 +1,3 @@
-import os
-import subprocess
-import sys
-import threading
 import tkinter as tk
 from tkinter import filedialog, messagebox
 
@@ -14,8 +10,8 @@ from skin_maker.skin_maker import SkinMaker
 from skin_maker.template_manager import TemplateManager
 from tools.tool_manager import ToolManager
 from ui.app_toolbar import AppToolbar
+from ui.character_maker.character_maker import CharacterMaker
 from ui.color_controller import ColorController
-from ui.color_palette import ColorPalette
 from ui.color_picker import ColorPicker
 from ui.dialogs.skin_type_dialog import SkinTypeDialog
 from ui.menu_bar import MenuBar
@@ -212,23 +208,23 @@ class BlockTailorApp:
         # =====================
         # スキンメーカーセクション
         # =====================
-        skin_maker_section = tk.LabelFrame(toolbar, text="🧬 スキンメーカー")
-        skin_maker_section.pack(fill="x", pady=5)
+        # skin_maker_section = tk.LabelFrame(toolbar, text="🧬 スキンメーカー")
+        # skin_maker_section.pack(fill="x", pady=5)
 
-        for category, templates in self.template_manager.templates.items():
+        # for category, templates in self.template_manager.templates.items():
 
-            frame = tk.LabelFrame(skin_maker_section, text=category)
-            frame.pack(fill="x", pady=2)
+        #    frame = tk.LabelFrame(skin_maker_section, text=category)
+        #    frame.pack(fill="x", pady=2)
 
-            for template in templates:
+        #    for template in templates:
 
-                btn = tk.Button(
-                    frame,
-                    text=template["name"],
-                    command=lambda c=category, t=template: self.select_template(c, t),
-                )
+        #        btn = tk.Button(
+        #            frame,
+        #            text=template["name"],
+        #            command=lambda c=category, t=template: self.select_template(c, t),
+        #        )
 
-                btn.pack(side="left", padx=2, pady=2)
+        #        btn.pack(side="left", padx=2, pady=2)
 
         # =====================
         # ファイルセクション
@@ -246,12 +242,38 @@ class BlockTailorApp:
             return
 
         dialog = SkinTypeDialog(self.root)
-        skin_type = dialog.result
+        result = dialog.result
 
-        if skin_type is None:
+        if result is None:
             return
 
+        skin_type = result["skin_type"]
+        use_maker = result["use_character_maker"]
+
         self.skin_controller.new_skin(skin_type)
+
+        if use_maker:
+            self.open_character_maker()
+
+        self.canvas.redraw_all()
+
+    def open_character_maker(self):
+        CharacterMaker(self.root, self, self.template_manager)
+
+    def apply_character(self, templates):
+
+        print("APPLY CHARACTER")  # ←確認用
+
+        # ① リセット
+        self.model.reset(self.model.skin_type)
+
+        # ② 合成
+        from skin_maker.skin_composer import SkinComposer
+
+        composer = SkinComposer(self.model)
+        composer.apply_templates(templates)
+
+        # ③ 再描画
         self.canvas.redraw_all()
 
     def save_skin(self):
@@ -293,6 +315,11 @@ class BlockTailorApp:
         from preview.preview_dialog import PreviewDialog
 
         self.preview_dialog = PreviewDialog(self.root, img)
+
+    def update_3d_preview(self, img):
+
+        if hasattr(self, "preview_dialog") and self.preview_dialog.winfo_exists():
+            self.preview_dialog.update_skin(img)
 
     def run(self):
         self.root.mainloop()
